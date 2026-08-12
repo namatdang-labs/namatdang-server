@@ -1,8 +1,5 @@
-package com.namatdang.namatdang.common.advice;
+package com.namatdang.namatdang.exception;
 
-import com.namatdang.namatdang.common.response.ErrorResponse;
-import com.namatdang.namatdang.exception.BusinessLogicException;
-import com.namatdang.namatdang.exception.ExceptionCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;

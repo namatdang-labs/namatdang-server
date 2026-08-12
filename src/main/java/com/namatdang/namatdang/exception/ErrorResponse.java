@@ -1,4 +1,4 @@
-package com.namatdang.namatdang.common.response;
+package com.namatdang.namatdang.exception;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

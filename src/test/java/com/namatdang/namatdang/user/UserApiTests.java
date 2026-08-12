@@ -41,7 +41,7 @@ class UserApiTests {
     void ownerRoleSignUp() throws Exception {
         String email = uniqueEmail("owner");
 
-        mockMvc.perform(post("/api/v1/auth/signup")
+        mockMvc.perform(post("/api/v1/users/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -66,7 +66,7 @@ class UserApiTests {
     void consumerRoleSignUp() throws Exception {
         String email = uniqueEmail("consumer");
 
-        mockMvc.perform(post("/api/v1/auth/signup")
+        mockMvc.perform(post("/api/v1/users/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -86,7 +86,7 @@ class UserApiTests {
         String email = uniqueEmail("duplicate");
         saveUser(email);
 
-        mockMvc.perform(post("/api/v1/auth/signup")
+        mockMvc.perform(post("/api/v1/users/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
