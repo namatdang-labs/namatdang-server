@@ -60,11 +60,11 @@ public class UserService {
     @Transactional
     public void deleteUser(Long userId) {
         User user = findUserById(userId);
-        user.delete();
+        userRepository.delete(user);
     }
 
     private User findUserById(Long userId) {
-        return userRepository.findByIdAndDeletedAtIsNull(userId)
+        return userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessLogicException(ExceptionCode.USER_NOT_FOUND));
     }
 

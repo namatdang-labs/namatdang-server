@@ -161,8 +161,7 @@ class UserApiTests {
                         .requestAttr("userId", user.getId()))
                 .andExpect(status().isNotFound());
 
-        assertThat(userRepository.findById(user.getId())).isPresent();
-        assertThat(userRepository.findById(user.getId()).orElseThrow().getDeletedAt()).isNotNull();
+        assertThat(userRepository.findById(user.getId())).isEmpty();
     }
 
     @Test

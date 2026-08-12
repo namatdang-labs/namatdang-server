@@ -47,8 +47,6 @@ public class User {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    private LocalDateTime deletedAt;
-
     public User(String email, String password, String name, String phoneNumber, UserRole role) {
         this.email = email;
         this.password = password;
@@ -77,7 +75,4 @@ public class User {
         }
     }
 
-    public void delete() {
-        this.deletedAt = LocalDateTime.now();
-    }
 }
