@@ -1,11 +1,13 @@
 package com.namatdang.namatdang.user.dto;
 
+import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.entity.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.util.Locale;
 import lombok.Getter;
 
 @Getter
@@ -30,4 +32,14 @@ public class UserSignUpRequestDto {
 
     @NotNull(message = "역할은 필수 입력 값입니다.")
     private UserRole role;
+
+    public User toEntity(String encodedPassword) {
+        return new User(
+                email.strip().toLowerCase(Locale.ROOT),
+                encodedPassword,
+                name.strip(),
+                phoneNumber.strip(),
+                role
+        );
+    }
 }

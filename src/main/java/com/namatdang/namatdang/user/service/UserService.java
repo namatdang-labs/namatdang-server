@@ -8,7 +8,6 @@ import com.namatdang.namatdang.user.dto.UserSignUpResponseDto;
 import com.namatdang.namatdang.user.dto.UserUpdateRequestDto;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.repository.UserRepository;
-import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,17 +23,9 @@ public class UserService {
 
     @Transactional
     public UserSignUpResponseDto signUpUser(UserSignUpRequestDto request) {
-        String email = request.getEmail().strip().toLowerCase(Locale.ROOT);
-        validateEmailNotExists(email);
-
         String encodedPassword = passwordEncoder.encode(request.getPassword());
-        User user = new User(
-                email,
-                encodedPassword,
-                request.getName().strip(),
-                request.getPhoneNumber().strip(),
-                request.getRole()
-        );
+        User user = request.toEntity(encodedPassword);
+        validateEmailNotExists(user.getEmail());
 
         try {
             userRepository.saveAndFlush(user);
@@ -42,27 +33,13 @@ public class UserService {
             throw new BusinessLogicException(ExceptionCode.USER_EMAIL_EXISTS);
         }
 
-        return new UserSignUpResponseDto(
-                user.getId(),
-                user.getEmail(),
-                user.getName(),
-                user.getPhoneNumber(),
-                user.getRole()
-        );
+        return UserSignUpResponseDto.from(user);
     }
 
     @Transactional(readOnly = true)
     public UserResponseDto getUser(Long userId) {
         User user = findUserById(userId);
-        return new UserResponseDto(
-                user.getId(),
-                user.getEmail(),
-                user.getName(),
-                user.getPhoneNumber(),
-                user.getRole(),
-                user.getCreatedAt(),
-                user.getUpdatedAt()
-        );
+        return UserResponseDto.from(user);
     }
 
     @Transactional
@@ -77,15 +54,7 @@ public class UserService {
         user.update(name, phoneNumber);
         userRepository.flush();
 
-        return new UserResponseDto(
-                user.getId(),
-                user.getEmail(),
-                user.getName(),
-                user.getPhoneNumber(),
-                user.getRole(),
-                user.getCreatedAt(),
-                user.getUpdatedAt()
-        );
+        return UserResponseDto.from(user);
     }
 
     @Transactional
