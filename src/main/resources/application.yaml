@@ -2,11 +2,14 @@ spring:
   application:
     name: namatdang
 
+  config:
+    import: "optional:file:.env[.properties]"
+
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: "${DB_URL:jdbc:mysql://localhost:3306/namatdang?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}"
-    username: "${DB_USERNAME:root}"
-    password: "${DB_PASSWORD:}"
+    url: "${DB_URL:jdbc:mysql://localhost:${MYSQL_PORT:3306}/${MYSQL_DATABASE:namatdang}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}"
+    username: "${DB_USERNAME:${MYSQL_USER:root}}"
+    password: "${DB_PASSWORD:${MYSQL_PASSWORD:}}"
 
   jpa:
     open-in-view: false
