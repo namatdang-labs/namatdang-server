@@ -38,12 +38,10 @@ public class UserSignUpRequestDto {
     }
 
     public User toEntity(String encodedPassword) {
-        return new User(
-                normalizedEmail(),
-                encodedPassword,
-                name.strip(),
-                phoneNumber.strip(),
-                role
-        );
+        return new User(normalizedEmail(),
+                        encodedPassword,
+                        name,
+                        phoneNumber,
+                        role);
     }
 }

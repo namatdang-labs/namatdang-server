@@ -113,7 +113,7 @@ class UserApiTests {
         User user = saveUser(email);
 
         mockMvc.perform(get("/api/v1/users/me")
-                .requestAttr("userId", user.getId()))
+                        .requestAttr("userId", user.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value(email))
                 .andExpect(jsonPath("$.password").doesNotExist());
@@ -181,16 +181,14 @@ class UserApiTests {
     @Test
     void ownerWithStoreCannotDeleteAccount() throws Exception {
         User owner = saveUser(uniqueEmail("owner-with-store"), UserRole.OWNER);
-        Store store = new Store(
-                owner,
-                "탈퇴 거절 매장",
-                "대구광역시 중구 종로 1",
-                null,
-                null,
-                null,
-                new BigDecimal("35.8714354"),
-                new BigDecimal("128.6014450")
-        );
+        Store store = new Store(owner,
+                                "탈퇴 거절 매장",
+                                "대구광역시 중구 종로 1",
+                                null,
+                                null,
+                                null,
+                                new BigDecimal("35.8714354"),
+                                new BigDecimal("128.6014450"));
         storeRepository.saveAndFlush(store);
 
         mockMvc.perform(delete("/api/v1/users/me")
@@ -207,13 +205,11 @@ class UserApiTests {
     }
 
     private User saveUser(String email, UserRole role) {
-        User user = new User(
-                email,
-                passwordEncoder.encode("password123"),
-                "테스트회원",
-                "010-1234-5678",
-                role
-        );
+        User user = new User(email,
+                             passwordEncoder.encode("password123"),
+                             "테스트회원",
+                             "010-1234-5678",
+                             role);
         return userRepository.saveAndFlush(user);
     }
 

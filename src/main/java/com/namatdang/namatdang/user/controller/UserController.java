@@ -44,10 +44,8 @@ public class UserController {
 
     @PatchMapping("/me")
     @Operation(summary = "내 정보 수정")
-    public ResponseEntity<UserResponseDto> updateMyInfo(
-            @RequestAttribute("userId") Long userId,
-            @Valid @RequestBody UserUpdateRequestDto requestDto
-    ) {
+    public ResponseEntity<UserResponseDto> updateMyInfo(@RequestAttribute("userId") Long userId,
+                                                        @Valid @RequestBody UserUpdateRequestDto requestDto) {
         UserResponseDto responseDto = userService.updateUser(userId, requestDto);
         return ResponseEntity.ok(responseDto);
     }

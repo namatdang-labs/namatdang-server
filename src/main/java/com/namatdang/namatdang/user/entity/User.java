@@ -1,6 +1,5 @@
 package com.namatdang.namatdang.user.entity;
 
-import com.namatdang.namatdang.user.dto.UserUpdateRequestDto;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -51,8 +50,8 @@ public class User {
     public User(String email, String password, String name, String phoneNumber, UserRole role) {
         this.email = email;
         this.password = password;
-        this.name = name;
-        this.phoneNumber = phoneNumber;
+        this.name = name.strip();
+        this.phoneNumber = phoneNumber.strip();
         this.role = role;
     }
 
@@ -67,13 +66,8 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void update(UserUpdateRequestDto requestDto) {
-        if (requestDto.getName() != null) {
-            this.name = requestDto.getName().strip();
-        }
-        if (requestDto.getPhoneNumber() != null) {
-            this.phoneNumber = requestDto.getPhoneNumber().strip();
-        }
+    public void updateProfile(String name, String phoneNumber) {
+        this.name = name == null ? this.name : name.strip();
+        this.phoneNumber = phoneNumber == null ? this.phoneNumber : phoneNumber.strip();
     }
-
 }

@@ -48,9 +48,9 @@ public class UserService {
     @Transactional
     public UserResponseDto updateUser(Long userId, UserUpdateRequestDto requestDto) {
         User user = findUserById(userId);
-        validateUpdateRequest(requestDto);
+        validateHasUpdates(requestDto);
 
-        user.update(requestDto);
+        user.updateProfile(requestDto.getName(), requestDto.getPhoneNumber());
         userRepository.flush();
 
         return UserResponseDto.from(user);
@@ -74,7 +74,7 @@ public class UserService {
         }
     }
 
-    private void validateUpdateRequest(UserUpdateRequestDto requestDto) {
+    private void validateHasUpdates(UserUpdateRequestDto requestDto) {
         if (!requestDto.hasUpdates()) {
             throw new BusinessLogicException(ExceptionCode.INVALID_INPUT_VALUE);
         }
@@ -85,5 +85,4 @@ public class UserService {
             throw new BusinessLogicException(ExceptionCode.OWNER_HAS_STORES);
         }
     }
-
 }
