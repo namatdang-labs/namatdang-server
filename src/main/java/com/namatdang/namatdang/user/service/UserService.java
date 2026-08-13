@@ -2,6 +2,7 @@ package com.namatdang.namatdang.user.service;
 
 import com.namatdang.namatdang.exception.BusinessLogicException;
 import com.namatdang.namatdang.exception.ExceptionCode;
+import com.namatdang.namatdang.store.repository.StoreRepository;
 import com.namatdang.namatdang.user.dto.UserResponseDto;
 import com.namatdang.namatdang.user.dto.UserSignUpRequestDto;
 import com.namatdang.namatdang.user.dto.UserSignUpResponseDto;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final StoreRepository storeRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
@@ -60,6 +62,7 @@ public class UserService {
     @Transactional
     public void deleteUser(Long userId) {
         User user = findUserById(userId);
+        validateUserHasNoStore(userId);
         userRepository.delete(user);
     }
 
@@ -71,6 +74,12 @@ public class UserService {
     private void validateEmailNotExists(String email) {
         if (userRepository.findByEmail(email).isPresent()) {
             throw new BusinessLogicException(ExceptionCode.USER_EMAIL_EXISTS);
+        }
+    }
+
+    private void validateUserHasNoStore(Long userId) {
+        if (storeRepository.existsByOwnerId(userId)) {
+            throw new BusinessLogicException(ExceptionCode.OWNER_HAS_STORES);
         }
     }
 
