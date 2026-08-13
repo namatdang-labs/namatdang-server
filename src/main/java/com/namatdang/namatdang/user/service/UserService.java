@@ -24,10 +24,11 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public UserSignUpResponseDto signUpUser(UserSignUpRequestDto request) {
-        String encodedPassword = passwordEncoder.encode(request.getPassword());
-        User user = request.toEntity(encodedPassword);
-        validateEmailNotExists(user.getEmail());
+    public UserSignUpResponseDto signUpUser(UserSignUpRequestDto requestDto) {
+        validateEmailNotExists(requestDto.normalizedEmail());
+
+        String encodedPassword = passwordEncoder.encode(requestDto.getPassword());
+        User user = requestDto.toEntity(encodedPassword);
 
         try {
             userRepository.saveAndFlush(user);
@@ -45,15 +46,11 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponseDto updateUser(Long userId, UserUpdateRequestDto request) {
-        if (request.getName() == null && request.getPhoneNumber() == null) {
-            throw new BusinessLogicException(ExceptionCode.INVALID_INPUT_VALUE);
-        }
-
+    public UserResponseDto updateUser(Long userId, UserUpdateRequestDto requestDto) {
         User user = findUserById(userId);
-        String name = request.getName() == null ? null : request.getName().strip();
-        String phoneNumber = request.getPhoneNumber() == null ? null : request.getPhoneNumber().strip();
-        user.update(name, phoneNumber);
+        validateUpdateRequest(requestDto);
+
+        user.update(requestDto);
         userRepository.flush();
 
         return UserResponseDto.from(user);
@@ -72,8 +69,14 @@ public class UserService {
     }
 
     private void validateEmailNotExists(String email) {
-        if (userRepository.findByEmail(email).isPresent()) {
+        if (userRepository.existsByEmail(email)) {
             throw new BusinessLogicException(ExceptionCode.USER_EMAIL_EXISTS);
+        }
+    }
+
+    private void validateUpdateRequest(UserUpdateRequestDto requestDto) {
+        if (!requestDto.hasUpdates()) {
+            throw new BusinessLogicException(ExceptionCode.INVALID_INPUT_VALUE);
         }
     }
 

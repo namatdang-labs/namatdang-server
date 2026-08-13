@@ -30,26 +30,26 @@ public class UserController {
 
     @PostMapping("/signup")
     @Operation(summary = "회원가입")
-    public ResponseEntity<UserSignUpResponseDto> signUp(@Valid @RequestBody UserSignUpRequestDto userSignUpRequestDto) {
-        UserSignUpResponseDto response = userService.signUpUser(userSignUpRequestDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    public ResponseEntity<UserSignUpResponseDto> signUp(@Valid @RequestBody UserSignUpRequestDto requestDto) {
+        UserSignUpResponseDto responseDto = userService.signUpUser(requestDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
     }
 
     @GetMapping("/me")
     @Operation(summary = "내 정보 조회")
     public ResponseEntity<UserResponseDto> getMyInfo(@RequestAttribute("userId") Long userId) {
-        UserResponseDto response = userService.getUser(userId);
-        return ResponseEntity.ok(response);
+        UserResponseDto responseDto = userService.getUser(userId);
+        return ResponseEntity.ok(responseDto);
     }
 
     @PatchMapping("/me")
     @Operation(summary = "내 정보 수정")
     public ResponseEntity<UserResponseDto> updateMyInfo(
             @RequestAttribute("userId") Long userId,
-            @Valid @RequestBody UserUpdateRequestDto userUpdateRequestDto
+            @Valid @RequestBody UserUpdateRequestDto requestDto
     ) {
-        UserResponseDto response = userService.updateUser(userId, userUpdateRequestDto);
-        return ResponseEntity.ok(response);
+        UserResponseDto responseDto = userService.updateUser(userId, requestDto);
+        return ResponseEntity.ok(responseDto);
     }
 
     @DeleteMapping("/me")

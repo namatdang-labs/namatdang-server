@@ -33,9 +33,13 @@ public class UserSignUpRequestDto {
     @NotNull(message = "역할은 필수 입력 값입니다.")
     private UserRole role;
 
+    public String normalizedEmail() {
+        return email.strip().toLowerCase(Locale.ROOT);
+    }
+
     public User toEntity(String encodedPassword) {
         return new User(
-                email.strip().toLowerCase(Locale.ROOT),
+                normalizedEmail(),
                 encodedPassword,
                 name.strip(),
                 phoneNumber.strip(),

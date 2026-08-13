@@ -1,5 +1,6 @@
 package com.namatdang.namatdang.user.entity;
 
+import com.namatdang.namatdang.user.dto.UserUpdateRequestDto;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -66,12 +67,12 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void update(String name, String phoneNumber) {
-        if (name != null) {
-            this.name = name;
+    public void update(UserUpdateRequestDto requestDto) {
+        if (requestDto.getName() != null) {
+            this.name = requestDto.getName().strip();
         }
-        if (phoneNumber != null) {
-            this.phoneNumber = phoneNumber;
+        if (requestDto.getPhoneNumber() != null) {
+            this.phoneNumber = requestDto.getPhoneNumber().strip();
         }
     }
 
