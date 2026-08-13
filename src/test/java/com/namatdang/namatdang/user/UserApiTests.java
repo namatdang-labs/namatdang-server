@@ -44,7 +44,7 @@ class UserApiTests {
     private PasswordEncoder passwordEncoder;
 
     @Test
-    void ownerRoleSignUp() throws Exception {
+    void ownerCanSignUp() throws Exception {
         String email = uniqueEmail("owner");
 
         mockMvc.perform(post("/api/v1/users/signup")
@@ -69,7 +69,7 @@ class UserApiTests {
     }
 
     @Test
-    void consumerRoleSignUp() throws Exception {
+    void consumerCanSignUp() throws Exception {
         String email = uniqueEmail("consumer");
 
         mockMvc.perform(post("/api/v1/users/signup")
@@ -88,7 +88,7 @@ class UserApiTests {
     }
 
     @Test
-    void duplicatedEmailCannotSignUp() throws Exception {
+    void duplicateEmailReturnsConflict() throws Exception {
         String email = uniqueEmail("duplicate");
         saveUser(email);
 
@@ -108,19 +108,25 @@ class UserApiTests {
     }
 
     @Test
-    void getMyInfo() throws Exception {
+    void getMyInfoReturnsUserWithoutPassword() throws Exception {
         String email = uniqueEmail("get");
         User user = saveUser(email);
 
         mockMvc.perform(get("/api/v1/users/me")
                         .requestAttr("userId", user.getId()))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(user.getId()))
                 .andExpect(jsonPath("$.email").value(email))
+                .andExpect(jsonPath("$.name").value(user.getName()))
+                .andExpect(jsonPath("$.phoneNumber").value(user.getPhoneNumber()))
+                .andExpect(jsonPath("$.role").value("CONSUMER"))
+                .andExpect(jsonPath("$.createdAt").exists())
+                .andExpect(jsonPath("$.updatedAt").exists())
                 .andExpect(jsonPath("$.password").doesNotExist());
     }
 
     @Test
-    void updateMyInfo() throws Exception {
+    void updateMyInfoChangesOnlyRequestedFields() throws Exception {
         User user = saveUser(uniqueEmail("update"));
 
         mockMvc.perform(patch("/api/v1/users/me")
@@ -133,12 +139,14 @@ class UserApiTests {
                                 }
                                 """))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(user.getEmail()))
                 .andExpect(jsonPath("$.name").value("수정이름"))
-                .andExpect(jsonPath("$.phoneNumber").value("010-9999-9999"));
+                .andExpect(jsonPath("$.phoneNumber").value("010-9999-9999"))
+                .andExpect(jsonPath("$.role").value("CONSUMER"));
     }
 
     @Test
-    void emptyUpdateRequestIsRejected() throws Exception {
+    void emptyUpdateRequestReturnsBadRequest() throws Exception {
         User user = saveUser(uniqueEmail("empty-update"));
 
         mockMvc.perform(patch("/api/v1/users/me")
@@ -150,7 +158,7 @@ class UserApiTests {
     }
 
     @Test
-    void deleteUserAndCannotAccessAgain() throws Exception {
+    void deletedUserCannotBeAccessedOrDeletedAgain() throws Exception {
         User user = saveUser(uniqueEmail("delete"));
 
         mockMvc.perform(delete("/api/v1/users/me")
