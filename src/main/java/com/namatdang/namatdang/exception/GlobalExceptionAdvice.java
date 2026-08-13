@@ -15,7 +15,7 @@ public class GlobalExceptionAdvice {
         ExceptionCode exceptionCode = exception.getExceptionCode();
 
         return ResponseEntity.status(exceptionCode.getStatus())
-                .body(new ErrorResponse(exceptionCode.getCode(), exceptionCode.getMessage()));
+                .body(ErrorResponse.from(exceptionCode));
     }
 
     @ExceptionHandler({
@@ -23,11 +23,8 @@ public class GlobalExceptionAdvice {
             HttpMessageNotReadableException.class,
             MethodArgumentTypeMismatchException.class
     })
-    public ResponseEntity<ErrorResponse> handleInvalidRequest(Exception exception) {
+    public ResponseEntity<ErrorResponse> handleInvalidRequest() {
         return ResponseEntity.badRequest()
-                .body(new ErrorResponse(
-                        ExceptionCode.INVALID_INPUT_VALUE.getCode(),
-                        ExceptionCode.INVALID_INPUT_VALUE.getMessage()
-                ));
+                .body(ErrorResponse.from(ExceptionCode.INVALID_INPUT_VALUE));
     }
 }
