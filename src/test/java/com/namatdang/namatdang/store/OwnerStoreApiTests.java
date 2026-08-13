@@ -249,27 +249,23 @@ class OwnerStoreApiTests {
     }
 
     private User saveUser(UserRole role) {
-        User user = new User(
-                uniqueValue() + "@example.com",
-                "encoded-password",
-                "테스트 회원",
-                "010-1234-5678",
-                role
-        );
+        User user = new User(uniqueValue() + "@example.com",
+                             "encoded-password",
+                             "테스트 회원",
+                             "010-1234-5678",
+                             role);
         return userRepository.saveAndFlush(user);
     }
 
     private Store saveStore(User owner, String name) {
-        Store store = new Store(
-                owner,
-                name,
-                "대구광역시 중구 동성로 10",
-                "2층",
-                "053-123-4567",
-                "매장 설명",
-                new BigDecimal("35.8714354"),
-                new BigDecimal("128.6014450")
-        );
+        Store store = new Store(owner,
+                                name,
+                                "대구광역시 중구 동성로 10",
+                                "2층",
+                                "053-123-4567",
+                                "매장 설명",
+                                new BigDecimal("35.8714354"),
+                                new BigDecimal("128.6014450"));
         return storeRepository.saveAndFlush(store);
     }
 

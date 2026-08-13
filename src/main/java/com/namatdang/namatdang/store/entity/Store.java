@@ -1,6 +1,5 @@
 package com.namatdang.namatdang.store.entity;
 
-import com.namatdang.namatdang.store.dto.StoreUpdateRequestDto;
 import com.namatdang.namatdang.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -24,10 +23,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(
-        name = "stores",
-        indexes = @Index(name = "idx_stores_owner_id", columnList = "owner_id")
-)
+@Table(name = "stores", indexes = @Index(name = "idx_stores_owner_id", columnList = "owner_id"))
 public class Store {
 
     @Id
@@ -64,22 +60,14 @@ public class Store {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    public Store(
-            User owner,
-            String name,
-            String address,
-            String addressDetail,
-            String phoneNumber,
-            String description,
-            BigDecimal latitude,
-            BigDecimal longitude
-    ) {
+    public Store(User owner, String name, String address, String addressDetail, String phoneNumber,
+                 String description, BigDecimal latitude, BigDecimal longitude) {
         this.owner = owner;
-        this.name = name;
-        this.address = address;
-        this.addressDetail = addressDetail;
-        this.phoneNumber = phoneNumber;
-        this.description = description;
+        this.name = name.strip();
+        this.address = address.strip();
+        this.addressDetail = normalizeNullable(addressDetail);
+        this.phoneNumber = normalizeNullable(phoneNumber);
+        this.description = normalizeNullable(description);
         this.latitude = latitude;
         this.longitude = longitude;
     }
@@ -95,27 +83,25 @@ public class Store {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void update(StoreUpdateRequestDto requestDto) {
-        if (requestDto.getName() != null) {
-            this.name = requestDto.getName().strip();
-        }
-        if (requestDto.getAddress() != null) {
-            this.address = requestDto.getAddress().strip();
-        }
-        if (requestDto.getAddressDetail() != null) {
-            this.addressDetail = requestDto.getAddressDetail().strip();
-        }
-        if (requestDto.getPhoneNumber() != null) {
-            this.phoneNumber = requestDto.getPhoneNumber().strip();
-        }
-        if (requestDto.getDescription() != null) {
-            this.description = requestDto.getDescription().strip();
-        }
-        if (requestDto.getLatitude() != null) {
-            this.latitude = requestDto.getLatitude();
-        }
-        if (requestDto.getLongitude() != null) {
-            this.longitude = requestDto.getLongitude();
-        }
+    public void updateInfo(String name, String address, String addressDetail, String phoneNumber,
+                           String description) {
+        this.name = valueOrCurrent(name, this.name);
+        this.address = valueOrCurrent(address, this.address);
+        this.addressDetail = valueOrCurrent(addressDetail, this.addressDetail);
+        this.phoneNumber = valueOrCurrent(phoneNumber, this.phoneNumber);
+        this.description = valueOrCurrent(description, this.description);
+    }
+
+    public void updateLocation(BigDecimal latitude, BigDecimal longitude) {
+        this.latitude = latitude == null ? this.latitude : latitude;
+        this.longitude = longitude == null ? this.longitude : longitude;
+    }
+
+    private String normalizeNullable(String value) {
+        return value == null ? null : value.strip();
+    }
+
+    private String valueOrCurrent(String value, String currentValue) {
+        return value == null ? currentValue : value.strip();
     }
 }

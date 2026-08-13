@@ -15,9 +15,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
     Optional<Store> findByIdAndOwnerId(Long storeId, Long ownerId);
 
-    Page<Store> findByNameContainingOrAddressContaining(
-            String name,
-            String address,
-            Pageable pageable
-    );
+    Page<Store> findByNameContainingOrAddressContaining(String nameKeyword,
+                                                        String addressKeyword,
+                                                        Pageable pageable);
 }

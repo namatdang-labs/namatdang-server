@@ -42,19 +42,13 @@ public class StoreCreateRequestDto {
     private BigDecimal longitude;
 
     public Store toEntity(User owner) {
-        return new Store(
-                owner,
-                name.strip(),
-                address.strip(),
-                stripOrNull(addressDetail),
-                stripOrNull(phoneNumber),
-                stripOrNull(description),
-                latitude,
-                longitude
-        );
-    }
-
-    private String stripOrNull(String value) {
-        return value == null ? null : value.strip();
+        return new Store(owner,
+                         name,
+                         address,
+                         addressDetail,
+                         phoneNumber,
+                         description,
+                         latitude,
+                         longitude);
     }
 }

@@ -46,10 +46,15 @@ public class OwnerStoreService {
     @Transactional
     public StoreResponseDto updateStore(Long userId, Long storeId, StoreUpdateRequestDto requestDto) {
         User owner = findOwnerById(userId);
-        validateUpdateRequest(requestDto);
+        validateHasUpdates(requestDto);
 
         Store store = findStoreByIdAndOwnerId(storeId, owner.getId());
-        store.update(requestDto);
+        store.updateInfo(requestDto.getName(),
+                         requestDto.getAddress(),
+                         requestDto.getAddressDetail(),
+                         requestDto.getPhoneNumber(),
+                         requestDto.getDescription());
+        store.updateLocation(requestDto.getLatitude(), requestDto.getLongitude());
 
         return StoreResponseDto.from(store);
     }
@@ -70,7 +75,7 @@ public class OwnerStoreService {
                 .orElseThrow(() -> new BusinessLogicException(ExceptionCode.STORE_NOT_FOUND));
     }
 
-    private void validateUpdateRequest(StoreUpdateRequestDto requestDto) {
+    private void validateHasUpdates(StoreUpdateRequestDto requestDto) {
         if (!requestDto.hasUpdates()) {
             throw new BusinessLogicException(ExceptionCode.INVALID_INPUT_VALUE);
         }

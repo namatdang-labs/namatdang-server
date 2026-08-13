@@ -114,7 +114,9 @@ class StoreApiTests {
     @Test
     void getStoreDetail() throws Exception {
         User owner = saveOwner();
-        Store store = saveStore(owner, "남았당 베이커리 " + uniqueKeyword(), "대구광역시 중구 국채보상로 1");
+        Store store = saveStore(owner,
+                                "남았당 베이커리 " + uniqueKeyword(),
+                                "대구광역시 중구 국채보상로 1");
 
         mockMvc.perform(get("/api/v1/stores/{storeId}", store.getId()))
                 .andExpect(status().isOk())
@@ -164,27 +166,23 @@ class StoreApiTests {
     }
 
     private User saveOwner() {
-        User owner = new User(
-                uniqueKeyword() + "@example.com",
-                "encoded-password",
-                "테스트 사장님",
-                "010-1234-5678",
-                UserRole.OWNER
-        );
+        User owner = new User(uniqueKeyword() + "@example.com",
+                              "encoded-password",
+                              "테스트 사장님",
+                              "010-1234-5678",
+                              UserRole.OWNER);
         return userRepository.saveAndFlush(owner);
     }
 
     private Store saveStore(User owner, String name, String address) {
-        Store store = new Store(
-                owner,
-                name,
-                address,
-                "1층",
-                "053-123-4567",
-                "매장 설명",
-                new BigDecimal("35.8714354"),
-                new BigDecimal("128.6014450")
-        );
+        Store store = new Store(owner,
+                                name,
+                                address,
+                                "1층",
+                                "053-123-4567",
+                                "매장 설명",
+                                new BigDecimal("35.8714354"),
+                                new BigDecimal("128.6014450"));
         return storeRepository.saveAndFlush(store);
     }
 

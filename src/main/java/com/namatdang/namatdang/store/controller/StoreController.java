@@ -23,11 +23,9 @@ public class StoreController {
 
     @GetMapping
     @Operation(summary = "매장 목록 조회 및 검색")
-    public ResponseEntity<StorePageResponseDto> getStores(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
-    ) {
+    public ResponseEntity<StorePageResponseDto> getStores(@RequestParam(required = false) String keyword,
+                                                          @RequestParam(defaultValue = "0") int page,
+                                                          @RequestParam(defaultValue = "20") int size) {
         StorePageResponseDto responseDto = storeService.getStores(keyword, page, size);
         return ResponseEntity.ok(responseDto);
     }

@@ -30,30 +30,24 @@ public class OwnerStoreController {
 
     @PostMapping
     @Operation(summary = "매장 등록")
-    public ResponseEntity<StoreResponseDto> createStore(
-            @RequestAttribute("userId") Long userId,
-            @Valid @RequestBody StoreCreateRequestDto requestDto
-    ) {
+    public ResponseEntity<StoreResponseDto> createStore(@RequestAttribute("userId") Long userId,
+                                                        @Valid @RequestBody StoreCreateRequestDto requestDto) {
         StoreResponseDto responseDto = ownerStoreService.createStore(userId, requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
     }
 
     @GetMapping
     @Operation(summary = "내 매장 목록 조회")
-    public ResponseEntity<List<StoreResponseDto>> getMyStores(
-            @RequestAttribute("userId") Long userId
-    ) {
+    public ResponseEntity<List<StoreResponseDto>> getMyStores(@RequestAttribute("userId") Long userId) {
         List<StoreResponseDto> responseDtos = ownerStoreService.getMyStores(userId);
         return ResponseEntity.ok(responseDtos);
     }
 
     @PatchMapping("/{storeId}")
     @Operation(summary = "내 매장 정보 수정")
-    public ResponseEntity<StoreResponseDto> updateStore(
-            @RequestAttribute("userId") Long userId,
-            @PathVariable Long storeId,
-            @Valid @RequestBody StoreUpdateRequestDto requestDto
-    ) {
+    public ResponseEntity<StoreResponseDto> updateStore(@RequestAttribute("userId") Long userId,
+                                                        @PathVariable Long storeId,
+                                                        @Valid @RequestBody StoreUpdateRequestDto requestDto) {
         StoreResponseDto responseDto = ownerStoreService.updateStore(userId, storeId, requestDto);
         return ResponseEntity.ok(responseDto);
     }

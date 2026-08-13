@@ -19,15 +19,13 @@ public class StoreResponseDto {
     private BigDecimal longitude;
 
     public static StoreResponseDto from(Store store) {
-        return new StoreResponseDto(
-                store.getId(),
-                store.getName(),
-                store.getAddress(),
-                store.getAddressDetail(),
-                store.getPhoneNumber(),
-                store.getDescription(),
-                store.getLatitude(),
-                store.getLongitude()
-        );
+        return new StoreResponseDto(store.getId(),
+                                    store.getName(),
+                                    store.getAddress(),
+                                    store.getAddressDetail(),
+                                    store.getPhoneNumber(),
+                                    store.getDescription(),
+                                    store.getLatitude(),
+                                    store.getLongitude());
     }
 }

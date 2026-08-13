@@ -23,14 +23,12 @@ public class StorePageResponseDto {
                 .map(StoreResponseDto::from)
                 .toList();
 
-        return new StorePageResponseDto(
-                content,
-                stores.getNumber(),
-                stores.getSize(),
-                stores.getTotalElements(),
-                stores.getTotalPages(),
-                stores.isFirst(),
-                stores.isLast()
-        );
+        return new StorePageResponseDto(content,
+                                        stores.getNumber(),
+                                        stores.getSize(),
+                                        stores.getTotalElements(),
+                                        stores.getTotalPages(),
+                                        stores.isFirst(),
+                                        stores.isLast());
     }
 }

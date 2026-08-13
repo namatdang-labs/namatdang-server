@@ -50,11 +50,9 @@ public class StoreService {
         }
 
         String normalizedKeyword = keyword.strip();
-        return storeRepository.findByNameContainingOrAddressContaining(
-                normalizedKeyword,
-                normalizedKeyword,
-                pageable
-        );
+        return storeRepository.findByNameContainingOrAddressContaining(normalizedKeyword,
+                                                                       normalizedKeyword,
+                                                                       pageable);
     }
 
     private Store findStoreById(Long storeId) {
