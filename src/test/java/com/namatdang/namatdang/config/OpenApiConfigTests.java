@@ -30,7 +30,11 @@ class OpenApiConfigTests {
                 .andExpect(jsonPath("$.paths['/api/v1/stores'].get.summary")
                         .value("매장 목록 조회 및 검색"))
                 .andExpect(jsonPath("$.paths['/api/v1/owner/stores'].post.summary")
-                        .value("매장 등록"));
+                        .value("매장 등록"))
+                .andExpect(jsonPath("$.components.schemas.UserUpdateRequestDto.properties.empty")
+                        .doesNotExist())
+                .andExpect(jsonPath("$.components.schemas.StoreUpdateRequestDto.properties.empty")
+                        .doesNotExist());
     }
 
     @Test
