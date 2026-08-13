@@ -45,16 +45,16 @@ public class StoreCreateRequestDto {
         return new Store(
                 owner,
                 name.strip(),
-                normalize(address),
-                normalize(addressDetail),
-                normalize(phoneNumber),
-                normalize(description),
+                address.strip(),
+                stripOrNull(addressDetail),
+                stripOrNull(phoneNumber),
+                stripOrNull(description),
                 latitude,
                 longitude
         );
     }
 
-    private String normalize(String value) {
+    private String stripOrNull(String value) {
         return value == null ? null : value.strip();
     }
 }

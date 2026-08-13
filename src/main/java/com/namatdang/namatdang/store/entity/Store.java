@@ -1,5 +1,6 @@
 package com.namatdang.namatdang.store.entity;
 
+import com.namatdang.namatdang.store.dto.StoreUpdateRequestDto;
 import com.namatdang.namatdang.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -94,35 +95,27 @@ public class Store {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void update(
-            String name,
-            String address,
-            String addressDetail,
-            String phoneNumber,
-            String description,
-            BigDecimal latitude,
-            BigDecimal longitude
-    ) {
-        if (name != null) {
-            this.name = name;
+    public void update(StoreUpdateRequestDto requestDto) {
+        if (requestDto.getName() != null) {
+            this.name = requestDto.getName().strip();
         }
-        if (address != null) {
-            this.address = address;
+        if (requestDto.getAddress() != null) {
+            this.address = requestDto.getAddress().strip();
         }
-        if (addressDetail != null) {
-            this.addressDetail = addressDetail;
+        if (requestDto.getAddressDetail() != null) {
+            this.addressDetail = requestDto.getAddressDetail().strip();
         }
-        if (phoneNumber != null) {
-            this.phoneNumber = phoneNumber;
+        if (requestDto.getPhoneNumber() != null) {
+            this.phoneNumber = requestDto.getPhoneNumber().strip();
         }
-        if (description != null) {
-            this.description = description;
+        if (requestDto.getDescription() != null) {
+            this.description = requestDto.getDescription().strip();
         }
-        if (latitude != null) {
-            this.latitude = latitude;
+        if (requestDto.getLatitude() != null) {
+            this.latitude = requestDto.getLatitude();
         }
-        if (longitude != null) {
-            this.longitude = longitude;
+        if (requestDto.getLongitude() != null) {
+            this.longitude = requestDto.getLongitude();
         }
     }
 }

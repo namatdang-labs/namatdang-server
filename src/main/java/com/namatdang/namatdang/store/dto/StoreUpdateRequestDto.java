@@ -38,13 +38,13 @@ public class StoreUpdateRequestDto {
     @Digits(integer = 3, fraction = 7, message = "경도는 소수점 7자리 이하로 입력해 주세요.")
     private BigDecimal longitude;
 
-    public boolean hasNoValues() {
-        return name == null
-                && address == null
-                && addressDetail == null
-                && phoneNumber == null
-                && description == null
-                && latitude == null
-                && longitude == null;
+    public boolean hasUpdates() {
+        return name != null
+                || address != null
+                || addressDetail != null
+                || phoneNumber != null
+                || description != null
+                || latitude != null
+                || longitude != null;
     }
 }

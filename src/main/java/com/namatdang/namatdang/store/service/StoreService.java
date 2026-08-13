@@ -9,6 +9,7 @@ import com.namatdang.namatdang.store.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,29 +27,39 @@ public class StoreService {
     public StorePageResponseDto getStores(String keyword, int page, int size) {
         validatePageRequest(page, size);
 
-        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id"));
-        String normalizedKeyword = keyword == null ? null : keyword.strip();
-
-        Page<Store> stores;
-        if (StringUtils.hasText(normalizedKeyword)) {
-            stores = storeRepository.findByNameContainingOrAddressContaining(
-                    normalizedKeyword,
-                    normalizedKeyword,
-                    pageRequest
-            );
-        } else {
-            stores = storeRepository.findAll(pageRequest);
-        }
+        Pageable pageable = createPageable(page, size);
+        Page<Store> stores = findStores(keyword, pageable);
 
         return StorePageResponseDto.from(stores);
     }
 
     @Transactional(readOnly = true)
     public StoreResponseDto getStore(Long storeId) {
-        Store store = storeRepository.findById(storeId)
-                .orElseThrow(() -> new BusinessLogicException(ExceptionCode.STORE_NOT_FOUND));
+        Store store = findStoreById(storeId);
 
         return StoreResponseDto.from(store);
+    }
+
+    private Pageable createPageable(int page, int size) {
+        return PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id"));
+    }
+
+    private Page<Store> findStores(String keyword, Pageable pageable) {
+        if (!StringUtils.hasText(keyword)) {
+            return storeRepository.findAll(pageable);
+        }
+
+        String normalizedKeyword = keyword.strip();
+        return storeRepository.findByNameContainingOrAddressContaining(
+                normalizedKeyword,
+                normalizedKeyword,
+                pageable
+        );
+    }
+
+    private Store findStoreById(Long storeId) {
+        return storeRepository.findById(storeId)
+                .orElseThrow(() -> new BusinessLogicException(ExceptionCode.STORE_NOT_FOUND));
     }
 
     private void validatePageRequest(int page, int size) {

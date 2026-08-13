@@ -23,9 +23,10 @@ public class OwnerStoreService {
     private final UserRepository userRepository;
 
     @Transactional
-    public StoreResponseDto createStore(Long userId, StoreCreateRequestDto request) {
-        User owner = findOwner(userId);
-        Store store = request.toEntity(owner);
+    public StoreResponseDto createStore(Long userId, StoreCreateRequestDto requestDto) {
+        User owner = findOwnerById(userId);
+
+        Store store = requestDto.toEntity(owner);
         Store savedStore = storeRepository.save(store);
 
         return StoreResponseDto.from(savedStore);
@@ -33,35 +34,27 @@ public class OwnerStoreService {
 
     @Transactional(readOnly = true)
     public List<StoreResponseDto> getMyStores(Long userId) {
-        findOwner(userId);
+        User owner = findOwnerById(userId);
 
-        return storeRepository.findAllByOwnerIdOrderByIdAsc(userId).stream()
+        List<Store> stores = storeRepository.findAllByOwnerIdOrderByIdAsc(owner.getId());
+
+        return stores.stream()
                 .map(StoreResponseDto::from)
                 .toList();
     }
 
     @Transactional
-    public StoreResponseDto updateStore(Long userId, Long storeId, StoreUpdateRequestDto request) {
-        findOwner(userId);
-        validateUpdateRequest(request);
+    public StoreResponseDto updateStore(Long userId, Long storeId, StoreUpdateRequestDto requestDto) {
+        User owner = findOwnerById(userId);
+        validateUpdateRequest(requestDto);
 
-        Store store = storeRepository.findByIdAndOwnerId(storeId, userId)
-                .orElseThrow(() -> new BusinessLogicException(ExceptionCode.STORE_NOT_FOUND));
-
-        store.update(
-                normalize(request.getName()),
-                normalize(request.getAddress()),
-                normalize(request.getAddressDetail()),
-                normalize(request.getPhoneNumber()),
-                normalize(request.getDescription()),
-                request.getLatitude(),
-                request.getLongitude()
-        );
+        Store store = findStoreByIdAndOwnerId(storeId, owner.getId());
+        store.update(requestDto);
 
         return StoreResponseDto.from(store);
     }
 
-    private User findOwner(Long userId) {
+    private User findOwnerById(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessLogicException(ExceptionCode.USER_NOT_FOUND));
 
@@ -72,13 +65,14 @@ public class OwnerStoreService {
         return user;
     }
 
-    private void validateUpdateRequest(StoreUpdateRequestDto request) {
-        if (request.hasNoValues()) {
-            throw new BusinessLogicException(ExceptionCode.INVALID_INPUT_VALUE);
-        }
+    private Store findStoreByIdAndOwnerId(Long storeId, Long ownerId) {
+        return storeRepository.findByIdAndOwnerId(storeId, ownerId)
+                .orElseThrow(() -> new BusinessLogicException(ExceptionCode.STORE_NOT_FOUND));
     }
 
-    private String normalize(String value) {
-        return value == null ? null : value.strip();
+    private void validateUpdateRequest(StoreUpdateRequestDto requestDto) {
+        if (!requestDto.hasUpdates()) {
+            throw new BusinessLogicException(ExceptionCode.INVALID_INPUT_VALUE);
+        }
     }
 }

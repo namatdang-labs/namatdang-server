@@ -28,14 +28,14 @@ public class StoreController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        StorePageResponseDto response = storeService.getStores(keyword, page, size);
-        return ResponseEntity.ok(response);
+        StorePageResponseDto responseDto = storeService.getStores(keyword, page, size);
+        return ResponseEntity.ok(responseDto);
     }
 
     @GetMapping("/{storeId}")
     @Operation(summary = "매장 상세 조회")
-    public ResponseEntity<StoreResponseDto> getStore(@PathVariable Long storeId) {
-        StoreResponseDto response = storeService.getStore(storeId);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<StoreResponseDto> getStoreDetail(@PathVariable Long storeId) {
+        StoreResponseDto responseDto = storeService.getStore(storeId);
+        return ResponseEntity.ok(responseDto);
     }
 }

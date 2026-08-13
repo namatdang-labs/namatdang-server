@@ -32,10 +32,10 @@ public class OwnerStoreController {
     @Operation(summary = "매장 등록")
     public ResponseEntity<StoreResponseDto> createStore(
             @RequestAttribute("userId") Long userId,
-            @Valid @RequestBody StoreCreateRequestDto storeCreateRequestDto
+            @Valid @RequestBody StoreCreateRequestDto requestDto
     ) {
-        StoreResponseDto response = ownerStoreService.createStore(userId, storeCreateRequestDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        StoreResponseDto responseDto = ownerStoreService.createStore(userId, requestDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
     }
 
     @GetMapping
@@ -43,8 +43,8 @@ public class OwnerStoreController {
     public ResponseEntity<List<StoreResponseDto>> getMyStores(
             @RequestAttribute("userId") Long userId
     ) {
-        List<StoreResponseDto> response = ownerStoreService.getMyStores(userId);
-        return ResponseEntity.ok(response);
+        List<StoreResponseDto> responseDtos = ownerStoreService.getMyStores(userId);
+        return ResponseEntity.ok(responseDtos);
     }
 
     @PatchMapping("/{storeId}")
@@ -52,9 +52,9 @@ public class OwnerStoreController {
     public ResponseEntity<StoreResponseDto> updateStore(
             @RequestAttribute("userId") Long userId,
             @PathVariable Long storeId,
-            @Valid @RequestBody StoreUpdateRequestDto storeUpdateRequestDto
+            @Valid @RequestBody StoreUpdateRequestDto requestDto
     ) {
-        StoreResponseDto response = ownerStoreService.updateStore(userId, storeId, storeUpdateRequestDto);
-        return ResponseEntity.ok(response);
+        StoreResponseDto responseDto = ownerStoreService.updateStore(userId, storeId, requestDto);
+        return ResponseEntity.ok(responseDto);
     }
 }
