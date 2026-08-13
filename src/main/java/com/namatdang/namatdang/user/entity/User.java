@@ -67,7 +67,11 @@ public class User {
     }
 
     public void updateProfile(String name, String phoneNumber) {
-        this.name = name == null ? this.name : name.strip();
-        this.phoneNumber = phoneNumber == null ? this.phoneNumber : phoneNumber.strip();
+        if (name != null) {
+            this.name = name.strip();
+        }
+        if (phoneNumber != null) {
+            this.phoneNumber = phoneNumber.strip();
+        }
     }
 }

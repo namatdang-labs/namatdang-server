@@ -24,19 +24,14 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public UserSignUpResponseDto signUpUser(UserSignUpRequestDto requestDto) {
+    public UserSignUpResponseDto signUp(UserSignUpRequestDto requestDto) {
         validateEmailNotExists(requestDto.normalizedEmail());
 
         String encodedPassword = passwordEncoder.encode(requestDto.getPassword());
         User user = requestDto.toEntity(encodedPassword);
+        User savedUser = saveUserOrThrowEmailConflict(user);
 
-        try {
-            userRepository.saveAndFlush(user);
-        } catch (DataIntegrityViolationException exception) {
-            throw new BusinessLogicException(ExceptionCode.USER_EMAIL_EXISTS);
-        }
-
-        return UserSignUpResponseDto.from(user);
+        return UserSignUpResponseDto.from(savedUser);
     }
 
     @Transactional(readOnly = true)
@@ -60,7 +55,7 @@ public class UserService {
     public void deleteUser(Long userId) {
         User user = findUserById(userId);
         validateUserHasNoStore(userId);
-        userRepository.delete(user);
+        deleteUserOrThrowStoreConflict(user);
     }
 
     private User findUserById(Long userId) {
@@ -82,6 +77,23 @@ public class UserService {
 
     private void validateUserHasNoStore(Long userId) {
         if (storeRepository.existsByOwnerId(userId)) {
+            throw new BusinessLogicException(ExceptionCode.OWNER_HAS_STORES);
+        }
+    }
+
+    private User saveUserOrThrowEmailConflict(User user) {
+        try {
+            return userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessLogicException(ExceptionCode.USER_EMAIL_EXISTS);
+        }
+    }
+
+    private void deleteUserOrThrowStoreConflict(User user) {
+        try {
+            userRepository.delete(user);
+            userRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
             throw new BusinessLogicException(ExceptionCode.OWNER_HAS_STORES);
         }
     }

@@ -31,7 +31,7 @@ public class UserController {
     @PostMapping("/signup")
     @Operation(summary = "회원가입")
     public ResponseEntity<UserSignUpResponseDto> signUp(@Valid @RequestBody UserSignUpRequestDto requestDto) {
-        UserSignUpResponseDto responseDto = userService.signUpUser(requestDto);
+        UserSignUpResponseDto responseDto = userService.signUp(requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
     }
 
