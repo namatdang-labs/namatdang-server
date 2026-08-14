@@ -15,7 +15,10 @@ import com.namatdang.namatdang.store.repository.StoreRepository;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.entity.UserRole;
 import com.namatdang.namatdang.user.repository.UserRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +44,9 @@ class FavoriteApiTests {
     @Autowired
     private FavoriteRepository favoriteRepository;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     @Test
     void consumerAddsFavoriteIdempotently() throws Exception {
         User consumer = saveUser(UserRole.CONSUMER);
@@ -48,15 +54,19 @@ class FavoriteApiTests {
 
         addFavorite(consumer, store);
         Favorite savedFavorite = favoriteRepository.findAllByUserIdOrderByIdAsc(consumer.getId()).getFirst();
+        Long favoriteId = savedFavorite.getId();
+        LocalDateTime createdAt = savedFavorite.getCreatedAt();
 
         addFavorite(consumer, store);
+        entityManager.flush();
+        entityManager.clear();
 
         assertThat(favoriteRepository.findAllByUserIdOrderByIdAsc(consumer.getId()))
                 .singleElement()
                 .satisfies(favorite -> {
-                    assertThat(favorite.getId()).isEqualTo(savedFavorite.getId());
+                    assertThat(favorite.getId()).isEqualTo(favoriteId);
                     assertThat(favorite.getStore().getId()).isEqualTo(store.getId());
-                    assertThat(favorite.getCreatedAt()).isEqualTo(savedFavorite.getCreatedAt());
+                    assertThat(favorite.getCreatedAt()).isEqualTo(createdAt);
                 });
     }
 
