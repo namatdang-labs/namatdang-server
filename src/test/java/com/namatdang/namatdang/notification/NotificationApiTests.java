@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.namatdang.namatdang.notification.entity.Notification;
 import com.namatdang.namatdang.notification.entity.NotificationType;
 import com.namatdang.namatdang.notification.repository.NotificationRepository;
+import com.namatdang.namatdang.notification.service.NotificationCleanupService;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.entity.UserRole;
 import com.namatdang.namatdang.user.repository.UserRepository;
@@ -38,6 +39,9 @@ class NotificationApiTests {
 
     @Autowired
     private NotificationRepository notificationRepository;
+
+    @Autowired
+    private NotificationCleanupService notificationCleanupService;
 
     @Autowired
     private UserRepository userRepository;
@@ -197,6 +201,27 @@ class NotificationApiTests {
                 user.getId(),
                 NotificationType.DEAL_PUBLISHED
         )).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void deleteNotificationsOlderThanThirtyDays() {
+        User user = saveUser("cleanup");
+        Notification expiredNotification = saveNotification(
+                801L,
+                user.getId(),
+                NotificationType.DEAL_PUBLISHED
+        );
+        Notification recentNotification = saveNotification(
+                802L,
+                user.getId(),
+                NotificationType.RESERVATION_CONFIRMED
+        );
+        makeOlderThanThirtyDays(expiredNotification);
+
+        notificationCleanupService.deleteExpiredNotifications();
+
+        assertThat(notificationRepository.findById(expiredNotification.getId())).isEmpty();
+        assertThat(notificationRepository.findById(recentNotification.getId())).isPresent();
     }
 
     private User saveUser(String prefix) {
