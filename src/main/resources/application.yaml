@@ -27,3 +27,9 @@ logging:
   level:
     org.hibernate.SQL: debug
     org.hibernate.orm.jdbc.bind: trace
+
+security:
+  jwt:
+    private-key-base64: "${JWT_PRIVATE_KEY_BASE64:}"
+    public-key-base64: "${JWT_PUBLIC_KEY_BASE64:}"
+    access-token-expiration-seconds: "${JWT_ACCESS_TOKEN_EXPIRATION_SECONDS:3600}"
