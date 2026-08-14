@@ -35,3 +35,17 @@
 4. 예약한 시간에 매장을 방문해 상품을 픽업합니다.
 
 ---
+
+## 로컬 데이터베이스 실행
+
+```bash
+cp .env.example .env
+docker compose up -d mysql
+```
+
+서버가 시작되면 Flyway가 적용되지 않은 `src/main/resources/db/migration`의 SQL을 버전 순서대로 실행합니다.
+
+- DB 구조를 변경할 때는 기존 마이그레이션을 수정하지 않고 다음 버전의 SQL 파일을 추가합니다.
+- JPA Entity와 마이그레이션 SQL을 함께 변경합니다.
+- Hibernate는 `ddl-auto: validate`로 스키마 일치 여부만 확인합니다.
+- 기존 로컬 DB를 초기화하면 데이터가 삭제되므로 `docker compose down -v`는 필요한 경우에만 사용합니다.
