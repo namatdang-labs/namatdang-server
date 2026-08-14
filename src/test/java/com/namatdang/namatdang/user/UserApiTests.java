@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.namatdang.namatdang.security.JwtTokenProvider;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.support.IntegrationTestSupport;
 import com.namatdang.namatdang.user.entity.UserRole;
@@ -37,6 +38,9 @@ class UserApiTests extends IntegrationTestSupport {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
 
     @Test
     void ownerRoleSignUp() throws Exception {
@@ -147,19 +151,20 @@ class UserApiTests extends IntegrationTestSupport {
     @Test
     void deleteUserAndCannotAccessAgain() throws Exception {
         User user = saveUser(uniqueEmail("delete"));
+        String token = bearerToken(user.getId(), user.getRole());
 
         mockMvc.perform(delete("/api/v1/users/me")
-                        .requestAttr("userId", user.getId()))
+                        .header("Authorization", token))
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
         mockMvc.perform(get("/api/v1/users/me")
-                        .requestAttr("userId", user.getId()))
+                        .header("Authorization", token))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
 
         mockMvc.perform(delete("/api/v1/users/me")
-                        .requestAttr("userId", user.getId()))
+                        .header("Authorization", token))
                 .andExpect(status().isNotFound());
 
         assertThat(userRepository.findById(user.getId())).isEmpty();
@@ -168,9 +173,13 @@ class UserApiTests extends IntegrationTestSupport {
     @Test
     void unknownUserReturnsNotFound() throws Exception {
         mockMvc.perform(get("/api/v1/users/me")
-                        .requestAttr("userId", Long.MAX_VALUE))
+                        .header("Authorization", bearerToken(Long.MAX_VALUE, UserRole.CONSUMER)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+    }
+
+    private String bearerToken(Long userId, UserRole role) {
+        return "Bearer " + jwtTokenProvider.issue(userId, role);
     }
 
     private User saveUser(String email) {
