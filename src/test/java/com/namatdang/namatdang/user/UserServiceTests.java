@@ -8,6 +8,7 @@ import static org.mockito.BDDMockito.willThrow;
 
 import com.namatdang.namatdang.exception.BusinessLogicException;
 import com.namatdang.namatdang.exception.ExceptionCode;
+import com.namatdang.namatdang.favorite.repository.FavoriteRepository;
 import com.namatdang.namatdang.store.repository.StoreRepository;
 import com.namatdang.namatdang.user.dto.UserSignUpRequestDto;
 import com.namatdang.namatdang.user.entity.User;
@@ -31,6 +32,9 @@ class UserServiceTests {
 
     @Mock
     private StoreRepository storeRepository;
+
+    @Mock
+    private FavoriteRepository favoriteRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -68,7 +72,7 @@ class UserServiceTests {
                              "010-1234-5678",
                              UserRole.OWNER);
 
-        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.of(user));
         given(storeRepository.existsByOwnerId(1L)).willReturn(false);
         willThrow(new DataIntegrityViolationException("store foreign key"))
                 .given(userRepository)
@@ -78,6 +82,7 @@ class UserServiceTests {
                                                                  () -> userService.deleteUser(1L));
 
         assertThat(exception.getExceptionCode()).isEqualTo(ExceptionCode.OWNER_HAS_STORES);
+        then(favoriteRepository).should().deleteAllByUserId(1L);
         then(userRepository).should().delete(user);
     }
 }

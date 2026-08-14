@@ -2,6 +2,7 @@ package com.namatdang.namatdang.user.service;
 
 import com.namatdang.namatdang.exception.BusinessLogicException;
 import com.namatdang.namatdang.exception.ExceptionCode;
+import com.namatdang.namatdang.favorite.repository.FavoriteRepository;
 import com.namatdang.namatdang.store.repository.StoreRepository;
 import com.namatdang.namatdang.user.dto.UserResponseDto;
 import com.namatdang.namatdang.user.dto.UserSignUpRequestDto;
@@ -21,6 +22,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final StoreRepository storeRepository;
+    private final FavoriteRepository favoriteRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
@@ -53,13 +55,19 @@ public class UserService {
 
     @Transactional
     public void deleteUser(Long userId) {
-        User user = findUserById(userId);
+        User user = findUserByIdForUpdate(userId);
         validateUserHasNoStore(userId);
+        favoriteRepository.deleteAllByUserId(userId);
         deleteUserOrThrowStoreConflict(user);
     }
 
     private User findUserById(Long userId) {
         return userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessLogicException(ExceptionCode.USER_NOT_FOUND));
+    }
+
+    private User findUserByIdForUpdate(Long userId) {
+        return userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new BusinessLogicException(ExceptionCode.USER_NOT_FOUND));
     }
 
