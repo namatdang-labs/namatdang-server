@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.namatdang.namatdang.user.entity.User;
+import com.namatdang.namatdang.support.IntegrationTestSupport;
 import com.namatdang.namatdang.user.entity.UserRole;
 import com.namatdang.namatdang.user.repository.UserRepository;
 import java.util.Locale;
@@ -26,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-class UserApiTests {
+class UserApiTests extends IntegrationTestSupport {
 
     @Autowired
     private MockMvc mockMvc;
@@ -41,7 +42,7 @@ class UserApiTests {
     void ownerRoleSignUp() throws Exception {
         String email = uniqueEmail("owner");
 
-        mockMvc.perform(post("/api/v1/users/signup")
+        mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -66,7 +67,7 @@ class UserApiTests {
     void consumerRoleSignUp() throws Exception {
         String email = uniqueEmail("consumer");
 
-        mockMvc.perform(post("/api/v1/users/signup")
+        mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -86,7 +87,7 @@ class UserApiTests {
         String email = uniqueEmail("duplicate");
         saveUser(email);
 
-        mockMvc.perform(post("/api/v1/users/signup")
+        mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
