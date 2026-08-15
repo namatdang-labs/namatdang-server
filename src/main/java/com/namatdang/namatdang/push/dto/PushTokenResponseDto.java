@@ -13,7 +13,6 @@ public class PushTokenResponseDto {
     private Long id;
     private PushDeviceType deviceType;
     private String browser;
-    private boolean active;
     private LocalDateTime lastRegisteredAt;
 
     public static PushTokenResponseDto from(FcmRegistration registration) {
@@ -21,7 +20,6 @@ public class PushTokenResponseDto {
                 registration.getId(),
                 registration.getDeviceType(),
                 registration.getBrowser(),
-                registration.isActive(),
                 registration.getLastRegisteredAt()
         );
     }

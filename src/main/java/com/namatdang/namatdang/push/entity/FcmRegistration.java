@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -30,8 +32,8 @@ import lombok.NoArgsConstructor;
         },
         indexes = {
                 @Index(
-                        name = "idx_fcm_registrations_user_active",
-                        columnList = "user_id, active"
+                        name = "idx_fcm_registrations_user",
+                        columnList = "user_id"
                 )
         }
 )
@@ -48,14 +50,12 @@ public class FcmRegistration {
     private String registrationToken;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "device_type", nullable = false, length = 20)
     private PushDeviceType deviceType;
 
     @Column(nullable = false, length = 30)
     private String browser;
-
-    @Column(nullable = false)
-    private boolean active;
 
     @Column(name = "last_registered_at", nullable = false)
     private LocalDateTime lastRegisteredAt;
@@ -76,7 +76,6 @@ public class FcmRegistration {
         this.registrationToken = registrationToken;
         this.deviceType = deviceType;
         this.browser = browser;
-        this.active = true;
     }
 
     @PrePersist
@@ -96,11 +95,6 @@ public class FcmRegistration {
         this.userId = userId;
         this.deviceType = deviceType;
         this.browser = browser;
-        this.active = true;
         this.lastRegisteredAt = LocalDateTime.now();
-    }
-
-    public void deactivate() {
-        this.active = false;
     }
 }

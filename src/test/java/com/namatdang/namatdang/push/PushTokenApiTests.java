@@ -46,26 +46,25 @@ class PushTokenApiTests {
     private PasswordEncoder passwordEncoder;
 
     @Test
-    void registerWebPushToken() throws Exception {
+    void registerIosPushToken() throws Exception {
         User user = saveUser("register");
         String registrationToken = uniqueToken("register");
 
         mockMvc.perform(put("/api/v1/push-tokens")
                         .requestAttr("userId", user.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody(registrationToken, "WEB", "SAFARI")))
+                        .content(requestBody(registrationToken, "IOS", "SAFARI")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").isNumber())
-                .andExpect(jsonPath("$.deviceType").value("WEB"))
+                .andExpect(jsonPath("$.deviceType").value("IOS"))
                 .andExpect(jsonPath("$.browser").value("SAFARI"))
-                .andExpect(jsonPath("$.active").value(true))
                 .andExpect(jsonPath("$.lastRegisteredAt").exists())
+                .andExpect(jsonPath("$.active").doesNotExist())
                 .andExpect(jsonPath("$.registrationToken").doesNotExist());
 
         FcmRegistration registration = findByToken(registrationToken);
         assertThat(registration.getUserId()).isEqualTo(user.getId());
-        assertThat(registration.getDeviceType()).isEqualTo(PushDeviceType.WEB);
-        assertThat(registration.isActive()).isTrue();
+        assertThat(registration.getDeviceType()).isEqualTo(PushDeviceType.IOS);
     }
 
     @Test
@@ -82,13 +81,12 @@ class PushTokenApiTests {
         assertThat(fcmRegistrationRepository.count()).isEqualTo(1);
         assertThat(updatedRegistration.getId()).isEqualTo(firstRegistration.getId());
         assertThat(updatedRegistration.getBrowser()).isEqualTo("CHROME");
-        assertThat(updatedRegistration.isActive()).isTrue();
     }
 
     @Test
-    void inactiveTokenIsReactivatedWithoutCreatingDuplicate() throws Exception {
-        User user = saveUser("reactivate");
-        String registrationToken = uniqueToken("reactivate");
+    void deletedTokenCanBeRegisteredAgain() throws Exception {
+        User user = saveUser("reregister");
+        String registrationToken = uniqueToken("reregister");
         register(user, registrationToken, "SAFARI");
         FcmRegistration registration = findByToken(registrationToken);
 
@@ -97,33 +95,41 @@ class PushTokenApiTests {
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
+        assertThat(fcmRegistrationRepository.findByRegistrationToken(registrationToken)).isEmpty();
+
         mockMvc.perform(delete("/api/v1/push-tokens/{pushTokenId}", registration.getId())
                         .requestAttr("userId", user.getId()))
-                .andExpect(status().isNoContent());
-
-        assertThat(findByToken(registrationToken).isActive()).isFalse();
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PUSH_TOKEN_NOT_FOUND"));
 
         register(user, registrationToken, "CHROME");
 
-        FcmRegistration reactivatedRegistration = findByToken(registrationToken);
+        FcmRegistration reregisteredRegistration = findByToken(registrationToken);
         assertThat(fcmRegistrationRepository.count()).isEqualTo(1);
-        assertThat(reactivatedRegistration.getId()).isEqualTo(registration.getId());
-        assertThat(reactivatedRegistration.isActive()).isTrue();
+        assertThat(reregisteredRegistration.getId()).isNotEqualTo(registration.getId());
+        assertThat(reregisteredRegistration.getBrowser()).isEqualTo("CHROME");
     }
 
     @Test
-    void oneUserCanRegisterMultipleBrowserTokens() throws Exception {
+    void oneUserCanRegisterMultipleDeviceTokens() throws Exception {
         User user = saveUser("multiple");
-        register(user, uniqueToken("safari"), "SAFARI");
-        register(user, uniqueToken("chrome"), "CHROME");
+        register(user, uniqueToken("ios"), "IOS", "SAFARI");
+        register(user, uniqueToken("android"), "ANDROID", "CHROME");
+        register(user, uniqueToken("desktop"), "DESKTOP", "CHROME");
 
-        List<FcmRegistration> activeRegistrations = pushTokenService.getActiveRegistrations(user.getId());
+        List<FcmRegistration> registrations = pushTokenService.getRegistrations(user.getId());
 
-        assertThat(activeRegistrations).hasSize(2);
+        assertThat(registrations)
+                .extracting(FcmRegistration::getDeviceType)
+                .containsExactly(
+                        PushDeviceType.IOS,
+                        PushDeviceType.ANDROID,
+                        PushDeviceType.DESKTOP
+                );
     }
 
     @Test
-    void otherUserCannotDeactivatePushToken() throws Exception {
+    void otherUserCannotDeletePushToken() throws Exception {
         User owner = saveUser("owner");
         User otherUser = saveUser("other");
         String registrationToken = uniqueToken("ownership");
@@ -135,7 +141,7 @@ class PushTokenApiTests {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("PUSH_TOKEN_NOT_FOUND"));
 
-        assertThat(findByToken(registrationToken).isActive()).isTrue();
+        assertThat(fcmRegistrationRepository.findByRegistrationToken(registrationToken)).isPresent();
     }
 
     @Test
@@ -152,31 +158,32 @@ class PushTokenApiTests {
         assertThat(fcmRegistrationRepository.count()).isEqualTo(1);
         assertThat(movedRegistration.getId()).isEqualTo(firstRegistration.getId());
         assertThat(movedRegistration.getUserId()).isEqualTo(currentUser.getId());
-        assertThat(pushTokenService.getActiveRegistrations(firstUser.getId())).isEmpty();
-        assertThat(pushTokenService.getActiveRegistrations(currentUser.getId()))
+        assertThat(pushTokenService.getRegistrations(firstUser.getId())).isEmpty();
+        assertThat(pushTokenService.getRegistrations(currentUser.getId()))
                 .extracting(FcmRegistration::getId)
                 .containsExactly(movedRegistration.getId());
     }
 
     @Test
-    void invalidFirebaseTokenIsDeactivatedAndExcludedFromTargets() throws Exception {
+    void invalidFirebaseTokenIsDeletedAndExcludedFromTargets() throws Exception {
         User user = saveUser("invalid-firebase");
         String registrationToken = uniqueToken("invalid-firebase");
         register(user, registrationToken, "SAFARI");
 
-        pushTokenService.deactivateInvalidToken(registrationToken);
+        pushTokenService.deleteInvalidToken(registrationToken);
 
-        assertThat(findByToken(registrationToken).isActive()).isFalse();
-        assertThat(pushTokenService.getActiveRegistrations(user.getId())).isEmpty();
+        assertThat(fcmRegistrationRepository.findByRegistrationToken(registrationToken)).isEmpty();
+        assertThat(pushTokenService.getRegistrations(user.getId())).isEmpty();
     }
 
+    @Test
     void invalidRequestIsRejected() throws Exception {
         User user = saveUser("invalid-request");
 
         mockMvc.perform(put("/api/v1/push-tokens")
                         .requestAttr("userId", user.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody(" ", "WEB", "SAFARI")))
+                        .content(requestBody(" ", "DESKTOP", "SAFARI")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 
@@ -189,10 +196,19 @@ class PushTokenApiTests {
     }
 
     private void register(User user, String registrationToken, String browser) throws Exception {
+        register(user, registrationToken, "DESKTOP", browser);
+    }
+
+    private void register(
+            User user,
+            String registrationToken,
+            String deviceType,
+            String browser
+    ) throws Exception {
         mockMvc.perform(put("/api/v1/push-tokens")
                         .requestAttr("userId", user.getId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody(registrationToken, "WEB", browser)))
+                        .content(requestBody(registrationToken, deviceType, browser)))
                 .andExpect(status().isOk());
     }
 

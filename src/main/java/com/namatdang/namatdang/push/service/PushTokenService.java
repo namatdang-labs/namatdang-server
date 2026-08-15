@@ -34,21 +34,21 @@ public class PushTokenService {
     }
 
     @Transactional
-    public void deactivate(Long userId, Long pushTokenId) {
+    public void delete(Long userId, Long pushTokenId) {
         FcmRegistration registration = fcmRegistrationRepository.findByIdAndUserId(pushTokenId, userId)
                 .orElseThrow(() -> new BusinessLogicException(ExceptionCode.PUSH_TOKEN_NOT_FOUND));
 
-        registration.deactivate();
+        fcmRegistrationRepository.delete(registration);
     }
 
     @Transactional
-    public void deactivateInvalidToken(String registrationToken) {
+    public void deleteInvalidToken(String registrationToken) {
         fcmRegistrationRepository.findByRegistrationToken(registrationToken)
-                .ifPresent(FcmRegistration::deactivate);
+                .ifPresent(fcmRegistrationRepository::delete);
     }
 
     @Transactional(readOnly = true)
-    public List<FcmRegistration> getActiveRegistrations(Long userId) {
-        return fcmRegistrationRepository.findAllByUserIdAndActiveTrueOrderByIdAsc(userId);
+    public List<FcmRegistration> getRegistrations(Long userId) {
+        return fcmRegistrationRepository.findAllByUserIdOrderByIdAsc(userId);
     }
 }

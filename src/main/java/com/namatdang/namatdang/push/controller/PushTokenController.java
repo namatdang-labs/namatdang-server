@@ -31,11 +31,11 @@ public class PushTokenController {
     }
 
     @DeleteMapping("/{pushTokenId}")
-    public ResponseEntity<Void> deactivate(
+    public ResponseEntity<Void> delete(
             @RequestAttribute("userId") Long userId,
             @PathVariable Long pushTokenId
     ) {
-        pushTokenService.deactivate(userId, pushTokenId);
+        pushTokenService.delete(userId, pushTokenId);
         return ResponseEntity.noContent().build();
     }
 }

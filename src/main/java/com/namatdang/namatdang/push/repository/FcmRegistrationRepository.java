@@ -11,5 +11,5 @@ public interface FcmRegistrationRepository extends JpaRepository<FcmRegistration
 
     Optional<FcmRegistration> findByIdAndUserId(Long id, Long userId);
 
-    List<FcmRegistration> findAllByUserIdAndActiveTrueOrderByIdAsc(Long userId);
+    List<FcmRegistration> findAllByUserIdOrderByIdAsc(Long userId);
 }
