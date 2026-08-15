@@ -2,6 +2,7 @@ package com.namatdang.namatdang.push.dto;
 
 import com.namatdang.namatdang.push.entity.FcmRegistration;
 import com.namatdang.namatdang.push.entity.PushDeviceType;
+import com.namatdang.namatdang.user.entity.User;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -30,9 +31,9 @@ public class PushTokenRegisterRequestDto {
         return browser.strip().toUpperCase(Locale.ROOT);
     }
 
-    public FcmRegistration toEntity(Long userId) {
+    public FcmRegistration toEntity(User user) {
         return new FcmRegistration(
-                userId,
+                user,
                 normalizedRegistrationToken(),
                 deviceType,
                 normalizedBrowser()

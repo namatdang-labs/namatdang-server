@@ -9,7 +9,7 @@ public interface FcmRegistrationRepository extends JpaRepository<FcmRegistration
 
     Optional<FcmRegistration> findByRegistrationToken(String registrationToken);
 
-    Optional<FcmRegistration> findByIdAndUserId(Long id, Long userId);
+    Optional<FcmRegistration> findByIdAndUser_Id(Long id, Long userId);
 
-    List<FcmRegistration> findAllByUserIdOrderByIdAsc(Long userId);
+    List<FcmRegistration> findAllByUser_IdOrderByIdAsc(Long userId);
 }

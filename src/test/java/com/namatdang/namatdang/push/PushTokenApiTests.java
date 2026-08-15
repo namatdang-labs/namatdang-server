@@ -14,6 +14,8 @@ import com.namatdang.namatdang.push.service.PushTokenService;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.entity.UserRole;
 import com.namatdang.namatdang.user.repository.UserRepository;
+import com.namatdang.namatdang.user.service.UserService;
+import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -41,6 +43,12 @@ class PushTokenApiTests {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -174,6 +182,21 @@ class PushTokenApiTests {
 
         assertThat(fcmRegistrationRepository.findByRegistrationToken(registrationToken)).isEmpty();
         assertThat(pushTokenService.getRegistrations(user.getId())).isEmpty();
+    }
+
+    @Test
+    void deletingUserDeletesAllPushTokens() throws Exception {
+        User user = saveUser("delete-user");
+        Long userId = user.getId();
+        register(user, uniqueToken("delete-user-ios"), "IOS", "SAFARI");
+        register(user, uniqueToken("delete-user-desktop"), "DESKTOP", "CHROME");
+
+        userService.deleteUser(userId);
+        userRepository.flush();
+        entityManager.clear();
+
+        assertThat(userRepository.findById(userId)).isEmpty();
+        assertThat(pushTokenService.getRegistrations(userId)).isEmpty();
     }
 
     @Test

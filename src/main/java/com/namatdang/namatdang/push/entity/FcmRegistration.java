@@ -1,13 +1,18 @@
 package com.namatdang.namatdang.push.entity;
 
+import com.namatdang.namatdang.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -17,6 +22,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.type.SqlTypes;
 
 @Getter
@@ -43,8 +50,14 @@ public class FcmRegistration {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(
+            name = "user_id",
+            nullable = false,
+            foreignKey = @ForeignKey(name = "fk_fcm_registrations_user")
+    )
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private User user;
 
     @Column(name = "registration_token", nullable = false, length = 512)
     private String registrationToken;
@@ -67,12 +80,12 @@ public class FcmRegistration {
     private LocalDateTime updatedAt;
 
     public FcmRegistration(
-            Long userId,
+            User user,
             String registrationToken,
             PushDeviceType deviceType,
             String browser
     ) {
-        this.userId = userId;
+        this.user = user;
         this.registrationToken = registrationToken;
         this.deviceType = deviceType;
         this.browser = browser;
@@ -91,10 +104,14 @@ public class FcmRegistration {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void register(Long userId, PushDeviceType deviceType, String browser) {
-        this.userId = userId;
+    public void register(User user, PushDeviceType deviceType, String browser) {
+        this.user = user;
         this.deviceType = deviceType;
         this.browser = browser;
         this.lastRegisteredAt = LocalDateTime.now();
+    }
+
+    public Long getUserId() {
+        return user.getId();
     }
 }
