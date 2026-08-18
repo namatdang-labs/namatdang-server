@@ -16,12 +16,10 @@ public class UserSignUpResponseDto {
     private UserRole role;
 
     public static UserSignUpResponseDto from(User user) {
-        return new UserSignUpResponseDto(
-                user.getId(),
-                user.getEmail(),
-                user.getName(),
-                user.getPhoneNumber(),
-                user.getRole()
-        );
+        return new UserSignUpResponseDto(user.getId(),
+                                         user.getEmail(),
+                                         user.getName(),
+                                         user.getPhoneNumber(),
+                                         user.getRole());
     }
 }
