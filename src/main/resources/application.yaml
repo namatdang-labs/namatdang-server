@@ -31,6 +31,8 @@ logging:
 notification:
   push:
     enabled: ${NOTIFICATION_PUSH_ENABLED:false}
+    firebase:
+      project-id: ${FIREBASE_PROJECT_ID:}
     batch-size: ${NOTIFICATION_PUSH_BATCH_SIZE:20}
     sending-timeout: ${NOTIFICATION_PUSH_SENDING_TIMEOUT:5m}
     retry-delay: ${NOTIFICATION_PUSH_RETRY_DELAY:30s}
