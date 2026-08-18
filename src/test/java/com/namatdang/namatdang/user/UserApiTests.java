@@ -10,10 +10,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.namatdang.namatdang.security.JwtTokenProvider;
+import com.namatdang.namatdang.store.entity.Store;
+import com.namatdang.namatdang.store.repository.StoreRepository;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.support.IntegrationTestSupport;
 import com.namatdang.namatdang.user.entity.UserRole;
 import com.namatdang.namatdang.user.repository.UserRepository;
+import java.math.BigDecimal;
 import java.util.Locale;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -37,13 +40,16 @@ class UserApiTests extends IntegrationTestSupport {
     private UserRepository userRepository;
 
     @Autowired
+    private StoreRepository storeRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
     @Test
-    void ownerRoleSignUp() throws Exception {
+    void ownerCanSignUp() throws Exception {
         String email = uniqueEmail("owner");
 
         mockMvc.perform(post("/api/v1/auth/signup")
@@ -68,7 +74,7 @@ class UserApiTests extends IntegrationTestSupport {
     }
 
     @Test
-    void consumerRoleSignUp() throws Exception {
+    void consumerCanSignUp() throws Exception {
         String email = uniqueEmail("consumer");
 
         mockMvc.perform(post("/api/v1/auth/signup")
@@ -87,7 +93,7 @@ class UserApiTests extends IntegrationTestSupport {
     }
 
     @Test
-    void duplicatedEmailCannotSignUp() throws Exception {
+    void duplicateEmailReturnsConflict() throws Exception {
         String email = uniqueEmail("duplicate");
         saveUser(email);
 
@@ -107,23 +113,29 @@ class UserApiTests extends IntegrationTestSupport {
     }
 
     @Test
-    void getMyInfo() throws Exception {
+    void getMyInfoReturnsUserWithoutPassword() throws Exception {
         String email = uniqueEmail("get");
         User user = saveUser(email);
 
         mockMvc.perform(get("/api/v1/users/me")
-                .requestAttr("userId", user.getId()))
+                        .header("Authorization", bearerToken(user.getId(), user.getRole())))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(user.getId()))
                 .andExpect(jsonPath("$.email").value(email))
+                .andExpect(jsonPath("$.name").value(user.getName()))
+                .andExpect(jsonPath("$.phoneNumber").value(user.getPhoneNumber()))
+                .andExpect(jsonPath("$.role").value("CONSUMER"))
+                .andExpect(jsonPath("$.createdAt").exists())
+                .andExpect(jsonPath("$.updatedAt").exists())
                 .andExpect(jsonPath("$.password").doesNotExist());
     }
 
     @Test
-    void updateMyInfo() throws Exception {
+    void updateMyInfoChangesOnlyRequestedFields() throws Exception {
         User user = saveUser(uniqueEmail("update"));
 
         mockMvc.perform(patch("/api/v1/users/me")
-                        .requestAttr("userId", user.getId())
+                        .header("Authorization", bearerToken(user.getId(), user.getRole()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -132,16 +144,18 @@ class UserApiTests extends IntegrationTestSupport {
                                 }
                                 """))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(user.getEmail()))
                 .andExpect(jsonPath("$.name").value("수정이름"))
-                .andExpect(jsonPath("$.phoneNumber").value("010-9999-9999"));
+                .andExpect(jsonPath("$.phoneNumber").value("010-9999-9999"))
+                .andExpect(jsonPath("$.role").value("CONSUMER"));
     }
 
     @Test
-    void emptyUpdateRequestIsRejected() throws Exception {
+    void emptyUpdateRequestReturnsBadRequest() throws Exception {
         User user = saveUser(uniqueEmail("empty-update"));
 
         mockMvc.perform(patch("/api/v1/users/me")
-                        .requestAttr("userId", user.getId())
+                        .header("Authorization", bearerToken(user.getId(), user.getRole()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())
@@ -149,7 +163,7 @@ class UserApiTests extends IntegrationTestSupport {
     }
 
     @Test
-    void deleteUserAndCannotAccessAgain() throws Exception {
+    void deletedUserCannotBeAccessedOrDeletedAgain() throws Exception {
         User user = saveUser(uniqueEmail("delete"));
         String token = bearerToken(user.getId(), user.getRole());
 
@@ -182,14 +196,38 @@ class UserApiTests extends IntegrationTestSupport {
         return "Bearer " + jwtTokenProvider.issue(userId, role);
     }
 
+    @Test
+    void ownerWithStoreCannotDeleteAccount() throws Exception {
+        User owner = saveUser(uniqueEmail("owner-with-store"), UserRole.OWNER);
+        Store store = new Store(owner,
+                                "탈퇴 거절 매장",
+                                "대구광역시 중구 종로 1",
+                                null,
+                                null,
+                                null,
+                                new BigDecimal("35.8714354"),
+                                new BigDecimal("128.6014450"));
+        storeRepository.saveAndFlush(store);
+
+        mockMvc.perform(delete("/api/v1/users/me")
+                        .header("Authorization", bearerToken(owner.getId(), owner.getRole())))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("OWNER_HAS_STORES"));
+
+        assertThat(userRepository.findById(owner.getId())).isPresent();
+        assertThat(storeRepository.findById(store.getId())).isPresent();
+    }
+
     private User saveUser(String email) {
-        User user = new User(
-                email,
-                passwordEncoder.encode("password123"),
-                "테스트회원",
-                "010-1234-5678",
-                UserRole.CONSUMER
-        );
+        return saveUser(email, UserRole.CONSUMER);
+    }
+
+    private User saveUser(String email, UserRole role) {
+        User user = new User(email,
+                             passwordEncoder.encode("password123"),
+                             "테스트회원",
+                             "010-1234-5678",
+                             role);
         return userRepository.saveAndFlush(user);
     }
 

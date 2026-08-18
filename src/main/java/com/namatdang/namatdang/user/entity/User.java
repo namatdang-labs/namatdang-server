@@ -50,8 +50,8 @@ public class User {
     public User(String email, String password, String name, String phoneNumber, UserRole role) {
         this.email = email;
         this.password = password;
-        this.name = name;
-        this.phoneNumber = phoneNumber;
+        this.name = name.strip();
+        this.phoneNumber = phoneNumber.strip();
         this.role = role;
     }
 
@@ -66,13 +66,12 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void update(String name, String phoneNumber) {
+    public void updateProfile(String name, String phoneNumber) {
         if (name != null) {
-            this.name = name;
+            this.name = name.strip();
         }
         if (phoneNumber != null) {
-            this.phoneNumber = phoneNumber;
+            this.phoneNumber = phoneNumber.strip();
         }
     }
-
 }
