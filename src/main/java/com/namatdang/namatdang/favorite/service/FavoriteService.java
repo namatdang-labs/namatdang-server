@@ -35,7 +35,7 @@ public class FavoriteService {
     public List<StoreResponseDto> getFavorites(Long userId) {
         User consumer = findConsumerById(userId);
 
-        return favoriteRepository.findAllByUserIdOrderByIdAsc(consumer.getId()).stream()
+        return favoriteRepository.findAllByUserIdInRegistrationOrder(consumer.getId()).stream()
                 .map(Favorite::getStore)
                 .map(StoreResponseDto::from)
                 .toList();

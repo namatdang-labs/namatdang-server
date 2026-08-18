@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.namatdang.namatdang.favorite.entity.Favorite;
+import com.namatdang.namatdang.favorite.entity.FavoriteId;
 import com.namatdang.namatdang.favorite.repository.FavoriteRepository;
 import com.namatdang.namatdang.store.entity.Store;
 import com.namatdang.namatdang.store.repository.StoreRepository;
@@ -19,6 +20,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,20 +50,36 @@ class FavoriteApiTests {
     private EntityManager entityManager;
 
     @Test
+    void favoritesTableUsesUserAndStoreCompositePrimaryKey() {
+        List<?> primaryKeyColumns = entityManager.createNativeQuery("""
+                        SELECT column_name
+                        FROM information_schema.statistics
+                        WHERE table_schema = DATABASE()
+                          AND table_name = 'favorites'
+                          AND index_name = 'PRIMARY'
+                        ORDER BY seq_in_index
+                        """)
+                .getResultList();
+
+        assertThat(primaryKeyColumns.stream().map(Object::toString).toList())
+                .containsExactly("user_id", "store_id");
+    }
+
+    @Test
     void consumerAddsFavoriteIdempotently() throws Exception {
         User consumer = saveUser(UserRole.CONSUMER);
         Store store = saveStore();
 
         addFavorite(consumer, store);
-        Favorite savedFavorite = favoriteRepository.findAllByUserIdOrderByIdAsc(consumer.getId()).getFirst();
-        Long favoriteId = savedFavorite.getId();
+        Favorite savedFavorite = favoriteRepository.findAllByUserIdInRegistrationOrder(consumer.getId()).getFirst();
+        FavoriteId favoriteId = new FavoriteId(consumer.getId(), store.getId());
         LocalDateTime createdAt = savedFavorite.getCreatedAt();
 
         addFavorite(consumer, store);
         entityManager.flush();
         entityManager.clear();
 
-        assertThat(favoriteRepository.findAllByUserIdOrderByIdAsc(consumer.getId()))
+        assertThat(favoriteRepository.findAllByUserIdInRegistrationOrder(consumer.getId()))
                 .singleElement()
                 .satisfies(favorite -> {
                     assertThat(favorite.getId()).isEqualTo(favoriteId);
@@ -71,22 +89,29 @@ class FavoriteApiTests {
     }
 
     @Test
-    void consumerGetsOnlyOwnFavoritesInRegistrationOrder() throws Exception {
+    void consumerGetsOnlyOwnFavoritesFromOldestToNewest() throws Exception {
         User consumer = saveUser(UserRole.CONSUMER);
         User otherConsumer = saveUser(UserRole.CONSUMER);
-        Store firstStore = saveStore();
-        Store secondStore = saveStore();
-        favoriteRepository.saveAndFlush(new Favorite(consumer, firstStore));
-        favoriteRepository.saveAndFlush(new Favorite(consumer, secondStore));
-        favoriteRepository.saveAndFlush(new Favorite(otherConsumer, firstStore));
+        Store lowerIdStore = saveStore();
+        Store middleIdStore = saveStore();
+        Store higherIdStore = saveStore();
+        LocalDateTime olderTime = LocalDateTime.of(2026, 1, 1, 10, 0);
+        LocalDateTime newerTime = olderTime.plusHours(1);
+
+        saveFavoriteAt(consumer, higherIdStore, olderTime);
+        saveFavoriteAt(consumer, lowerIdStore, olderTime);
+        saveFavoriteAt(consumer, middleIdStore, newerTime);
+        saveFavoriteAt(otherConsumer, lowerIdStore, olderTime);
+        entityManager.clear();
 
         mockMvc.perform(get("/api/v1/favorites")
                         .requestAttr("userId", consumer.getId()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].id").value(firstStore.getId()))
-                .andExpect(jsonPath("$[0].name").value(firstStore.getName()))
-                .andExpect(jsonPath("$[1].id").value(secondStore.getId()));
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[0].id").value(lowerIdStore.getId()))
+                .andExpect(jsonPath("$[0].name").value(lowerIdStore.getName()))
+                .andExpect(jsonPath("$[1].id").value(higherIdStore.getId()))
+                .andExpect(jsonPath("$[2].id").value(middleIdStore.getId()));
     }
 
     @Test
@@ -112,11 +137,11 @@ class FavoriteApiTests {
         deleteFavorite(consumer, store);
         deleteFavorite(consumer, store);
 
-        assertThat(favoriteRepository.findAllByUserIdOrderByIdAsc(consumer.getId()))
+        assertThat(favoriteRepository.findAllByUserIdInRegistrationOrder(consumer.getId()))
                 .singleElement()
                 .extracting(favorite -> favorite.getStore().getId())
                 .isEqualTo(otherStore.getId());
-        assertThat(favoriteRepository.findAllByUserIdOrderByIdAsc(otherConsumer.getId()))
+        assertThat(favoriteRepository.findAllByUserIdInRegistrationOrder(otherConsumer.getId()))
                 .hasSize(1);
     }
 
@@ -140,7 +165,7 @@ class FavoriteApiTests {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
 
-        assertThat(favoriteRepository.findAllByUserIdOrderByIdAsc(owner.getId()))
+        assertThat(favoriteRepository.findAllByUserIdInRegistrationOrder(owner.getId()))
                 .isEmpty();
     }
 
@@ -205,7 +230,7 @@ class FavoriteApiTests {
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
-        assertThat(favoriteRepository.findAllByUserIdOrderByIdAsc(consumer.getId()))
+        assertThat(favoriteRepository.findAllByUserIdInRegistrationOrder(consumer.getId()))
                 .isEmpty();
         assertThat(userRepository.findById(consumer.getId())).isEmpty();
         assertThat(storeRepository.findById(store.getId())).isPresent();
@@ -223,6 +248,17 @@ class FavoriteApiTests {
                         .requestAttr("userId", consumer.getId()))
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
+    }
+
+    private void saveFavoriteAt(User consumer, Store store, LocalDateTime createdAt) {
+        entityManager.createNativeQuery("""
+                        INSERT INTO favorites (user_id, store_id, created_at)
+                        VALUES (:userId, :storeId, :createdAt)
+                        """)
+                .setParameter("userId", consumer.getId())
+                .setParameter("storeId", store.getId())
+                .setParameter("createdAt", createdAt)
+                .executeUpdate();
     }
 
     private User saveUser(UserRole role) {
