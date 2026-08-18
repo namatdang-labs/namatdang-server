@@ -160,22 +160,22 @@ class UserApiTests extends IntegrationTestSupport {
 
         mockMvc.perform(get("/api/v1/users/me")
                         .header("Authorization", token))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
 
         mockMvc.perform(delete("/api/v1/users/me")
                         .header("Authorization", token))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isUnauthorized());
 
         assertThat(userRepository.findById(user.getId())).isEmpty();
     }
 
     @Test
-    void unknownUserReturnsNotFound() throws Exception {
+    void unknownUserReturnsUnauthorized() throws Exception {
         mockMvc.perform(get("/api/v1/users/me")
                         .header("Authorization", bearerToken(Long.MAX_VALUE, UserRole.CONSUMER)))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
     private String bearerToken(Long userId, UserRole role) {
