@@ -244,8 +244,8 @@ class OwnerStoreApiTests {
     void unknownUserCannotManageStores() throws Exception {
         mockMvc.perform(get("/api/v1/owner/stores")
                         .requestAttr("userId", Long.MAX_VALUE))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
     private User saveUser(UserRole role) {

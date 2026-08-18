@@ -12,6 +12,7 @@ import com.namatdang.namatdang.notification.entity.Notification;
 import com.namatdang.namatdang.notification.entity.NotificationType;
 import com.namatdang.namatdang.notification.repository.NotificationRepository;
 import com.namatdang.namatdang.notification.service.NotificationCleanupService;
+import com.namatdang.namatdang.support.IntegrationTestSupport;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.entity.UserRole;
 import com.namatdang.namatdang.user.repository.UserRepository;
@@ -32,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-class NotificationApiTests {
+class NotificationApiTests extends IntegrationTestSupport {
 
     @Autowired
     private MockMvc mockMvc;
