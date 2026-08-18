@@ -40,7 +40,7 @@ public class SecurityConfig {
                         .authenticationEntryPoint((request, response, exception) ->
                                 errorWriter.write(response, ExceptionCode.INVALID_TOKEN))
                         .accessDeniedHandler((request, response, exception) ->
-                                errorWriter.write(response, ExceptionCode.ACCESS_DENIED))
+                                errorWriter.write(response, ExceptionCode.FORBIDDEN))
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
