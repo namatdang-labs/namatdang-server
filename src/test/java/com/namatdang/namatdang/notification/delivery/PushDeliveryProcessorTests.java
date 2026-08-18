@@ -20,8 +20,6 @@ import com.namatdang.namatdang.notification.fixture.FakePushMessageSender;
 import com.namatdang.namatdang.notification.fixture.FakePushRegistrationStore;
 import com.namatdang.namatdang.notification.handler.DealCreatedNotificationHandler;
 import com.namatdang.namatdang.notification.handler.repository.NotificationEventConsumptionRepository;
-import com.namatdang.namatdang.notification.push.ActivePushRegistrationReader;
-import com.namatdang.namatdang.notification.push.InvalidPushRegistrationHandler;
 import com.namatdang.namatdang.notification.push.PushMessageSender;
 import com.namatdang.namatdang.notification.push.PushSendResult;
 import com.namatdang.namatdang.notification.recipient.FavoriteRecipientReader;
@@ -192,14 +190,14 @@ class PushDeliveryProcessorTests {
         @Bean
         DealCreatedNotificationHandler dealCreatedNotificationHandler(
                 FavoriteRecipientReader favoriteRecipientReader,
-                ActivePushRegistrationReader pushRegistrationReader,
+                FakePushRegistrationStore pushRegistrationStore,
                 NotificationRepository notificationRepository,
                 PushDeliveryRepository pushDeliveryRepository,
                 NotificationEventConsumptionRepository consumptionRepository
         ) {
             return new DealCreatedNotificationHandler(
                     favoriteRecipientReader,
-                    pushRegistrationReader,
+                    pushRegistrationStore,
                     notificationRepository,
                     pushDeliveryRepository,
                     consumptionRepository
@@ -209,15 +207,14 @@ class PushDeliveryProcessorTests {
         @Bean
         PushDeliveryProcessor pushDeliveryProcessor(
                 PushDeliveryService pushDeliveryService,
-                ActivePushRegistrationReader pushRegistrationReader,
-                PushMessageSender pushMessageSender,
-                InvalidPushRegistrationHandler invalidPushRegistrationHandler
+                FakePushRegistrationStore pushRegistrationStore,
+                PushMessageSender pushMessageSender
         ) {
             return new PushDeliveryProcessor(
                     pushDeliveryService,
-                    pushRegistrationReader,
+                    pushRegistrationStore,
                     pushMessageSender,
-                    invalidPushRegistrationHandler
+                    pushRegistrationStore
             );
         }
     }

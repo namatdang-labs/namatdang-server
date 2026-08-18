@@ -24,7 +24,6 @@ import com.namatdang.namatdang.notification.event.NotificationEventType;
 import com.namatdang.namatdang.notification.fixture.FakeFavoriteRecipientReader;
 import com.namatdang.namatdang.notification.fixture.FakePushRegistrationStore;
 import com.namatdang.namatdang.notification.handler.repository.NotificationEventConsumptionRepository;
-import com.namatdang.namatdang.notification.push.ActivePushRegistrationReader;
 import com.namatdang.namatdang.notification.recipient.FavoriteRecipientReader;
 import com.namatdang.namatdang.notification.repository.NotificationRepository;
 import com.namatdang.namatdang.notification.service.NotificationCleanupService;
@@ -220,14 +219,14 @@ class DealCreatedNotificationHandlerTests {
         @Bean
         DealCreatedNotificationHandler dealCreatedNotificationHandler(
                 FavoriteRecipientReader favoriteRecipientReader,
-                ActivePushRegistrationReader pushRegistrationReader,
+                FakePushRegistrationStore pushRegistrationStore,
                 NotificationRepository notificationRepository,
                 PushDeliveryRepository pushDeliveryRepository,
                 NotificationEventConsumptionRepository consumptionRepository
         ) {
             return new DealCreatedNotificationHandler(
                     favoriteRecipientReader,
-                    pushRegistrationReader,
+                    pushRegistrationStore,
                     notificationRepository,
                     pushDeliveryRepository,
                     consumptionRepository
