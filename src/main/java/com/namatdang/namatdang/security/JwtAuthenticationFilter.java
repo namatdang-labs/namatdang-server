@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
@@ -61,7 +62,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private void authenticate(Jwt jwt) {
         Long userId = Long.valueOf(jwt.getSubject());
-        UserRole role = UserRole.valueOf(jwt.getClaimAsString("role"));
+        UserRole role = userRepository.findById(userId)
+                .map(User::getRole)
+                .orElseThrow(() -> new BadJwtException("탈퇴했거나 존재하지 않는 회원의 토큰입니다."));
         setAuthentication(new AuthUser(userId, role));
     }
 
