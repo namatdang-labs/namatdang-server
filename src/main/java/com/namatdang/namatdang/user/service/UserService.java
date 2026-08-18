@@ -2,6 +2,8 @@ package com.namatdang.namatdang.user.service;
 
 import com.namatdang.namatdang.exception.BusinessLogicException;
 import com.namatdang.namatdang.exception.ExceptionCode;
+import com.namatdang.namatdang.favorite.repository.FavoriteRepository;
+import com.namatdang.namatdang.store.repository.StoreRepository;
 import com.namatdang.namatdang.user.dto.UserResponseDto;
 import com.namatdang.namatdang.user.dto.UserSignUpRequestDto;
 import com.namatdang.namatdang.user.dto.UserSignUpResponseDto;
@@ -19,21 +21,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final StoreRepository storeRepository;
+    private final FavoriteRepository favoriteRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public UserSignUpResponseDto signUpUser(UserSignUpRequestDto request) {
-        String encodedPassword = passwordEncoder.encode(request.getPassword());
-        User user = request.toEntity(encodedPassword);
-        validateEmailNotExists(user.getEmail());
+    public UserSignUpResponseDto signUp(UserSignUpRequestDto requestDto) {
+        validateEmailNotExists(requestDto.normalizedEmail());
 
-        try {
-            userRepository.saveAndFlush(user);
-        } catch (DataIntegrityViolationException exception) {
-            throw new BusinessLogicException(ExceptionCode.USER_EMAIL_EXISTS);
-        }
+        String encodedPassword = passwordEncoder.encode(requestDto.getPassword());
+        User user = requestDto.toEntity(encodedPassword);
+        User savedUser = saveUserOrThrowEmailConflict(user);
 
-        return UserSignUpResponseDto.from(user);
+        return UserSignUpResponseDto.from(savedUser);
     }
 
     @Transactional(readOnly = true)
@@ -43,15 +43,11 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponseDto updateUser(Long userId, UserUpdateRequestDto request) {
-        if (request.getName() == null && request.getPhoneNumber() == null) {
-            throw new BusinessLogicException(ExceptionCode.INVALID_INPUT_VALUE);
-        }
-
+    public UserResponseDto updateUser(Long userId, UserUpdateRequestDto requestDto) {
         User user = findUserById(userId);
-        String name = request.getName() == null ? null : request.getName().strip();
-        String phoneNumber = request.getPhoneNumber() == null ? null : request.getPhoneNumber().strip();
-        user.update(name, phoneNumber);
+        validateHasUpdates(requestDto);
+
+        user.updateProfile(requestDto.getName(), requestDto.getPhoneNumber());
         userRepository.flush();
 
         return UserResponseDto.from(user);
@@ -59,8 +55,10 @@ public class UserService {
 
     @Transactional
     public void deleteUser(Long userId) {
-        User user = findUserById(userId);
-        userRepository.delete(user);
+        User user = findUserByIdForUpdate(userId);
+        validateUserHasNoStore(userId);
+        favoriteRepository.deleteAllByUserId(userId);
+        deleteUserOrThrowStoreConflict(user);
     }
 
     private User findUserById(Long userId) {
@@ -68,10 +66,43 @@ public class UserService {
                 .orElseThrow(() -> new BusinessLogicException(ExceptionCode.USER_NOT_FOUND));
     }
 
+    private User findUserByIdForUpdate(Long userId) {
+        return userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new BusinessLogicException(ExceptionCode.USER_NOT_FOUND));
+    }
+
     private void validateEmailNotExists(String email) {
-        if (userRepository.findByEmail(email).isPresent()) {
+        if (userRepository.existsByEmail(email)) {
             throw new BusinessLogicException(ExceptionCode.USER_EMAIL_EXISTS);
         }
     }
 
+    private void validateHasUpdates(UserUpdateRequestDto requestDto) {
+        if (!requestDto.hasUpdates()) {
+            throw new BusinessLogicException(ExceptionCode.INVALID_INPUT_VALUE);
+        }
+    }
+
+    private void validateUserHasNoStore(Long userId) {
+        if (storeRepository.existsByOwnerId(userId)) {
+            throw new BusinessLogicException(ExceptionCode.OWNER_HAS_STORES);
+        }
+    }
+
+    private User saveUserOrThrowEmailConflict(User user) {
+        try {
+            return userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessLogicException(ExceptionCode.USER_EMAIL_EXISTS);
+        }
+    }
+
+    private void deleteUserOrThrowStoreConflict(User user) {
+        try {
+            userRepository.delete(user);
+            userRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessLogicException(ExceptionCode.OWNER_HAS_STORES);
+        }
+    }
 }

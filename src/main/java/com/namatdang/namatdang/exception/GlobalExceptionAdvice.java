@@ -5,6 +5,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GlobalExceptionAdvice {
@@ -14,15 +15,16 @@ public class GlobalExceptionAdvice {
         ExceptionCode exceptionCode = exception.getExceptionCode();
 
         return ResponseEntity.status(exceptionCode.getStatus())
-                .body(new ErrorResponse(exceptionCode.getCode(), exceptionCode.getMessage()));
+                .body(ErrorResponse.from(exceptionCode));
     }
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class})
-    public ResponseEntity<ErrorResponse> handleInvalidRequest(Exception exception) {
+    @ExceptionHandler({
+            MethodArgumentNotValidException.class,
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class
+    })
+    public ResponseEntity<ErrorResponse> handleInvalidRequest() {
         return ResponseEntity.badRequest()
-                .body(new ErrorResponse(
-                        ExceptionCode.INVALID_INPUT_VALUE.getCode(),
-                        ExceptionCode.INVALID_INPUT_VALUE.getMessage()
-                ));
+                .body(ErrorResponse.from(ExceptionCode.INVALID_INPUT_VALUE));
     }
 }

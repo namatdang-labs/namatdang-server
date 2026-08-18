@@ -19,14 +19,12 @@ public class UserResponseDto {
     private LocalDateTime updatedAt;
 
     public static UserResponseDto from(User user) {
-        return new UserResponseDto(
-                user.getId(),
-                user.getEmail(),
-                user.getName(),
-                user.getPhoneNumber(),
-                user.getRole(),
-                user.getCreatedAt(),
-                user.getUpdatedAt()
-        );
+        return new UserResponseDto(user.getId(),
+                                   user.getEmail(),
+                                   user.getName(),
+                                   user.getPhoneNumber(),
+                                   user.getRole(),
+                                   user.getCreatedAt(),
+                                   user.getUpdatedAt());
     }
 }
