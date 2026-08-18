@@ -12,6 +12,7 @@ public enum ExceptionCode {
     OWNER_HAS_STORES(HttpStatus.CONFLICT, "OWNER_HAS_STORES", "등록된 매장이 있어 탈퇴할 수 없습니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "FORBIDDEN", "접근 권한이 없습니다."),
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_NOT_FOUND", "알림을 찾을 수 없습니다."),
+    PUSH_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "PUSH_TOKEN_NOT_FOUND", "Push 토큰을 찾을 수 없습니다."),
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "요청 값을 확인해 주세요.");
 
     private final HttpStatus status;
