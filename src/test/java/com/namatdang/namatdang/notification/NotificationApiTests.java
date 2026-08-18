@@ -59,10 +59,10 @@ class NotificationApiTests {
     void getRecentNotificationsInDescendingOrder() throws Exception {
         User user = saveUser("list");
         User otherUser = saveUser("other-list");
-        Notification first = saveNotification(101L, user.getId(), NotificationType.DEAL_PUBLISHED);
+        Notification first = saveNotification(101L, user.getId(), NotificationType.DEAL_CREATED);
         Notification second = saveNotification(102L, user.getId(), NotificationType.RESERVATION_CONFIRMED);
         Notification old = saveNotification(103L, user.getId(), NotificationType.RESERVATION_CANCELED);
-        saveNotification(104L, otherUser.getId(), NotificationType.DEAL_PUBLISHED);
+        saveNotification(104L, otherUser.getId(), NotificationType.DEAL_CREATED);
         makeOlderThanThirtyDays(old);
 
         mockMvc.perform(get("/api/v1/notifications")
@@ -77,7 +77,7 @@ class NotificationApiTests {
     @Test
     void getNotificationsWithCursor() throws Exception {
         User user = saveUser("cursor");
-        Notification first = saveNotification(201L, user.getId(), NotificationType.DEAL_PUBLISHED);
+        Notification first = saveNotification(201L, user.getId(), NotificationType.DEAL_CREATED);
         Notification second = saveNotification(202L, user.getId(), NotificationType.RESERVATION_CONFIRMED);
         Notification third = saveNotification(203L, user.getId(), NotificationType.RESERVATION_CANCELED);
 
@@ -104,7 +104,7 @@ class NotificationApiTests {
     @Test
     void getUnreadNotificationCount() throws Exception {
         User user = saveUser("unread");
-        saveNotification(301L, user.getId(), NotificationType.DEAL_PUBLISHED);
+        saveNotification(301L, user.getId(), NotificationType.DEAL_CREATED);
         saveNotification(302L, user.getId(), NotificationType.RESERVATION_CONFIRMED);
         Notification readNotification = saveNotification(
                 303L,
@@ -114,7 +114,7 @@ class NotificationApiTests {
         Notification oldUnreadNotification = saveNotification(
                 304L,
                 user.getId(),
-                NotificationType.DEAL_PUBLISHED
+                NotificationType.DEAL_CREATED
         );
         readNotification.markAsRead();
         notificationRepository.flush();
@@ -129,7 +129,7 @@ class NotificationApiTests {
     @Test
     void readMyNotification() throws Exception {
         User user = saveUser("read");
-        Notification notification = saveNotification(401L, user.getId(), NotificationType.DEAL_PUBLISHED);
+        Notification notification = saveNotification(401L, user.getId(), NotificationType.DEAL_CREATED);
 
         mockMvc.perform(patch("/api/v1/notifications/{notificationId}/read", notification.getId())
                         .requestAttr("userId", user.getId()))
@@ -144,7 +144,7 @@ class NotificationApiTests {
     @Test
     void readingNotificationIsIdempotent() throws Exception {
         User user = saveUser("idempotent-read");
-        Notification notification = saveNotification(501L, user.getId(), NotificationType.DEAL_PUBLISHED);
+        Notification notification = saveNotification(501L, user.getId(), NotificationType.DEAL_CREATED);
 
         mockMvc.perform(patch("/api/v1/notifications/{notificationId}/read", notification.getId())
                         .requestAttr("userId", user.getId()))
@@ -162,7 +162,7 @@ class NotificationApiTests {
     void cannotReadOtherUsersNotification() throws Exception {
         User owner = saveUser("owner");
         User otherUser = saveUser("other");
-        Notification notification = saveNotification(601L, owner.getId(), NotificationType.DEAL_PUBLISHED);
+        Notification notification = saveNotification(601L, owner.getId(), NotificationType.DEAL_CREATED);
 
         mockMvc.perform(patch("/api/v1/notifications/{notificationId}/read", notification.getId())
                         .requestAttr("userId", otherUser.getId()))
@@ -194,12 +194,12 @@ class NotificationApiTests {
     @Test
     void duplicatedEventAndRecipientCannotBeSaved() {
         User user = saveUser("duplicate");
-        saveNotification(701L, user.getId(), NotificationType.DEAL_PUBLISHED);
+        saveNotification(701L, user.getId(), NotificationType.DEAL_CREATED);
 
         assertThatThrownBy(() -> saveNotification(
                 701L,
                 user.getId(),
-                NotificationType.DEAL_PUBLISHED
+                NotificationType.DEAL_CREATED
         )).isInstanceOf(DataIntegrityViolationException.class);
     }
 
@@ -209,7 +209,7 @@ class NotificationApiTests {
         Notification expiredNotification = saveNotification(
                 801L,
                 user.getId(),
-                NotificationType.DEAL_PUBLISHED
+                NotificationType.DEAL_CREATED
         );
         Notification recentNotification = saveNotification(
                 802L,
