@@ -10,6 +10,7 @@ import com.namatdang.namatdang.notification.outbox.entity.NotificationEventStatu
 import com.namatdang.namatdang.notification.outbox.repository.NotificationEventRepository;
 import com.namatdang.namatdang.notification.outbox.service.NotificationOutboxPublisher;
 import com.namatdang.namatdang.notification.outbox.service.NotificationOutboxService;
+import com.namatdang.namatdang.support.IntegrationTestSupport;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -21,7 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class NotificationOutboxPublisherTests {
+class NotificationOutboxPublisherTests extends IntegrationTestSupport {
 
     @Autowired
     private NotificationOutboxService outboxService;

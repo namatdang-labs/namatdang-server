@@ -4,6 +4,7 @@ import static com.namatdang.namatdang.notification.fixture.NotificationScenarioF
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.namatdang.namatdang.notification.event.NotificationEventMessage;
+import com.namatdang.namatdang.support.IntegrationTestSupport;
 import java.net.URI;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
@@ -22,7 +23,7 @@ import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @EnabledIfEnvironmentVariable(named = "RUN_LOCALSTACK_TESTS", matches = "true")
-class SqsLocalStackIntegrationTests {
+class SqsLocalStackIntegrationTests extends IntegrationTestSupport {
 
     private static final String QUEUE_NAME = "namatdang-notification-events";
 

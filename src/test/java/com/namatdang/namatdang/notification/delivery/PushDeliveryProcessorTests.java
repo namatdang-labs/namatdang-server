@@ -24,6 +24,7 @@ import com.namatdang.namatdang.notification.push.PushMessageSender;
 import com.namatdang.namatdang.notification.push.PushSendResult;
 import com.namatdang.namatdang.notification.recipient.FavoriteRecipientReader;
 import com.namatdang.namatdang.notification.repository.NotificationRepository;
+import com.namatdang.namatdang.support.IntegrationTestSupport;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +40,7 @@ import org.springframework.context.annotation.Import;
 
 @SpringBootTest
 @Import(PushDeliveryProcessorTests.TestConfig.class)
-class PushDeliveryProcessorTests {
+class PushDeliveryProcessorTests extends IntegrationTestSupport {
 
     private static final Duration SENDING_TIMEOUT = Duration.ofMinutes(5);
 

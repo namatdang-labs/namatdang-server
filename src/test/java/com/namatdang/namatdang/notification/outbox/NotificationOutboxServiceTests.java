@@ -9,6 +9,7 @@ import com.namatdang.namatdang.notification.outbox.entity.NotificationEvent;
 import com.namatdang.namatdang.notification.outbox.entity.NotificationEventStatus;
 import com.namatdang.namatdang.notification.outbox.repository.NotificationEventRepository;
 import com.namatdang.namatdang.notification.outbox.service.NotificationOutboxService;
+import com.namatdang.namatdang.support.IntegrationTestSupport;
 import jakarta.persistence.EntityManager;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -24,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @Transactional
-class NotificationOutboxServiceTests {
+class NotificationOutboxServiceTests extends IntegrationTestSupport {
 
     private static final Duration PUBLISHING_TIMEOUT = Duration.ofMinutes(5);
 

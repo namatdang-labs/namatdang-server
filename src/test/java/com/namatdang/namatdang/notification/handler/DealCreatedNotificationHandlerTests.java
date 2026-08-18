@@ -27,6 +27,7 @@ import com.namatdang.namatdang.notification.handler.repository.NotificationEvent
 import com.namatdang.namatdang.notification.recipient.FavoriteRecipientReader;
 import com.namatdang.namatdang.notification.repository.NotificationRepository;
 import com.namatdang.namatdang.notification.service.NotificationCleanupService;
+import com.namatdang.namatdang.support.IntegrationTestSupport;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -42,7 +43,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 @SpringBootTest
 @Import(DealCreatedNotificationHandlerTests.TestConfig.class)
-class DealCreatedNotificationHandlerTests {
+class DealCreatedNotificationHandlerTests extends IntegrationTestSupport {
 
     @Autowired
     private DealCreatedNotificationHandler handler;

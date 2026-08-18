@@ -4,6 +4,7 @@ import static com.namatdang.namatdang.notification.fixture.NotificationScenarioF
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.namatdang.namatdang.notification.event.NotificationEventMessage;
+import com.namatdang.namatdang.support.IntegrationTestSupport;
 import java.lang.reflect.Proxy;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,7 +22,7 @@ import software.amazon.awssdk.services.sqs.model.SendMessageResponse;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
-class SqsNotificationAdapterTests {
+class SqsNotificationAdapterTests extends IntegrationTestSupport {
 
     private static final String QUEUE_URL = "http://localhost:4566/000000000000/events";
 

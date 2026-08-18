@@ -17,6 +17,7 @@ import com.namatdang.namatdang.push.adapter.FcmRegistrationNotificationAdapter;
 import com.namatdang.namatdang.push.entity.FcmRegistration;
 import com.namatdang.namatdang.push.entity.PushDeviceType;
 import com.namatdang.namatdang.push.repository.FcmRegistrationRepository;
+import com.namatdang.namatdang.support.IntegrationTestSupport;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.entity.UserRole;
 import com.namatdang.namatdang.user.repository.UserRepository;
@@ -34,7 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 @SpringBootTest
 @Import(FcmRegistrationNotificationAdapterTests.TestConfig.class)
 @Transactional
-class FcmRegistrationNotificationAdapterTests {
+class FcmRegistrationNotificationAdapterTests extends IntegrationTestSupport {
 
     private static final long EVENT_ID = 91_001L;
     private static final long DEAL_ID = 92_001L;
