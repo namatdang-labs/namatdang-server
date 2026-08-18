@@ -190,18 +190,18 @@ class FavoriteApiTests {
 
         mockMvc.perform(get("/api/v1/favorites")
                         .requestAttr("userId", Long.MAX_VALUE))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
 
         mockMvc.perform(put("/api/v1/favorites/{storeId}", store.getId())
                         .requestAttr("userId", Long.MAX_VALUE))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
 
         mockMvc.perform(delete("/api/v1/favorites/{storeId}", store.getId())
                         .requestAttr("userId", Long.MAX_VALUE))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
     @Test

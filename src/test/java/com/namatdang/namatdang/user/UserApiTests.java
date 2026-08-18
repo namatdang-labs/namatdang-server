@@ -9,9 +9,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.namatdang.namatdang.security.JwtTokenProvider;
 import com.namatdang.namatdang.store.entity.Store;
 import com.namatdang.namatdang.store.repository.StoreRepository;
 import com.namatdang.namatdang.user.entity.User;
+import com.namatdang.namatdang.support.IntegrationTestSupport;
 import com.namatdang.namatdang.user.entity.UserRole;
 import com.namatdang.namatdang.user.repository.UserRepository;
 import java.math.BigDecimal;
@@ -29,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-class UserApiTests {
+class UserApiTests extends IntegrationTestSupport {
 
     @Autowired
     private MockMvc mockMvc;
@@ -43,11 +45,14 @@ class UserApiTests {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
     @Test
     void ownerCanSignUp() throws Exception {
         String email = uniqueEmail("owner");
 
-        mockMvc.perform(post("/api/v1/users/signup")
+        mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -72,7 +77,7 @@ class UserApiTests {
     void consumerCanSignUp() throws Exception {
         String email = uniqueEmail("consumer");
 
-        mockMvc.perform(post("/api/v1/users/signup")
+        mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -92,7 +97,7 @@ class UserApiTests {
         String email = uniqueEmail("duplicate");
         saveUser(email);
 
-        mockMvc.perform(post("/api/v1/users/signup")
+        mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -113,7 +118,7 @@ class UserApiTests {
         User user = saveUser(email);
 
         mockMvc.perform(get("/api/v1/users/me")
-                        .requestAttr("userId", user.getId()))
+                        .header("Authorization", bearerToken(user.getId(), user.getRole())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(user.getId()))
                 .andExpect(jsonPath("$.email").value(email))
@@ -130,7 +135,7 @@ class UserApiTests {
         User user = saveUser(uniqueEmail("update"));
 
         mockMvc.perform(patch("/api/v1/users/me")
-                        .requestAttr("userId", user.getId())
+                        .header("Authorization", bearerToken(user.getId(), user.getRole()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -150,7 +155,7 @@ class UserApiTests {
         User user = saveUser(uniqueEmail("empty-update"));
 
         mockMvc.perform(patch("/api/v1/users/me")
-                        .requestAttr("userId", user.getId())
+                        .header("Authorization", bearerToken(user.getId(), user.getRole()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())
@@ -160,30 +165,35 @@ class UserApiTests {
     @Test
     void deletedUserCannotBeAccessedOrDeletedAgain() throws Exception {
         User user = saveUser(uniqueEmail("delete"));
+        String token = bearerToken(user.getId(), user.getRole());
 
         mockMvc.perform(delete("/api/v1/users/me")
-                        .requestAttr("userId", user.getId()))
+                        .header("Authorization", token))
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
         mockMvc.perform(get("/api/v1/users/me")
-                        .requestAttr("userId", user.getId()))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+                        .header("Authorization", token))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
 
         mockMvc.perform(delete("/api/v1/users/me")
-                        .requestAttr("userId", user.getId()))
-                .andExpect(status().isNotFound());
+                        .header("Authorization", token))
+                .andExpect(status().isUnauthorized());
 
         assertThat(userRepository.findById(user.getId())).isEmpty();
     }
 
     @Test
-    void unknownUserReturnsNotFound() throws Exception {
+    void unknownUserReturnsUnauthorized() throws Exception {
         mockMvc.perform(get("/api/v1/users/me")
-                        .requestAttr("userId", Long.MAX_VALUE))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+                        .header("Authorization", bearerToken(Long.MAX_VALUE, UserRole.CONSUMER)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    private String bearerToken(Long userId, UserRole role) {
+        return "Bearer " + jwtTokenProvider.issue(userId, role);
     }
 
     @Test
@@ -200,7 +210,7 @@ class UserApiTests {
         storeRepository.saveAndFlush(store);
 
         mockMvc.perform(delete("/api/v1/users/me")
-                        .requestAttr("userId", owner.getId()))
+                        .header("Authorization", bearerToken(owner.getId(), owner.getRole())))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("OWNER_HAS_STORES"));
 
