@@ -1,6 +1,5 @@
 package com.namatdang.namatdang.notification.outbox.service;
 
-import com.namatdang.namatdang.notification.event.DealCreatedEvent;
 import com.namatdang.namatdang.notification.event.NotificationEventMessage;
 import com.namatdang.namatdang.notification.event.NotificationEventRecorder;
 import com.namatdang.namatdang.notification.outbox.entity.NotificationEvent;
@@ -24,8 +23,12 @@ public class NotificationOutboxService implements NotificationEventRecorder {
 
     @Override
     @Transactional
-    public void recordDealCreated(DealCreatedEvent dealCreatedEvent) {
-        NotificationEvent event = NotificationEvent.dealCreated(dealCreatedEvent);
+    public void recordDealCreated(
+            Long dealId,
+            Long storeId,
+            LocalDateTime dealCreatedAt
+    ) {
+        NotificationEvent event = NotificationEvent.dealCreated(dealId, storeId, dealCreatedAt);
         if (notificationEventRepository.existsBySourceRequestKey(event.getSourceRequestKey())) {
             return;
         }

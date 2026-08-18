@@ -2,7 +2,6 @@ package com.namatdang.namatdang.notification.outbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.namatdang.namatdang.notification.event.DealCreatedEvent;
 import com.namatdang.namatdang.notification.event.NotificationEventMessage;
 import com.namatdang.namatdang.notification.event.NotificationEventPublisher;
 import com.namatdang.namatdang.notification.messaging.sqs.NotificationSqsProperties;
@@ -56,7 +55,7 @@ class NotificationOutboxPublisherTests {
 
     @Test
     void markOutboxEventPublishedAfterSqsSuccess() {
-        outboxService.recordDealCreated(dealCreatedEvent(7_001L, 8_001L));
+        recordDealCreated(7_001L, 8_001L);
 
         assertThat(outboxPublisher.publishBatch()).isEqualTo(1);
 
@@ -68,7 +67,7 @@ class NotificationOutboxPublisherTests {
 
     @Test
     void returnFailedSqsPublishToRetryQueue() {
-        outboxService.recordDealCreated(dealCreatedEvent(7_002L, 8_002L));
+        recordDealCreated(7_002L, 8_002L);
         eventPublisher.fail = true;
 
         assertThat(outboxPublisher.publishBatch()).isEqualTo(1);
@@ -79,8 +78,8 @@ class NotificationOutboxPublisherTests {
         assertThat(event.getLastError()).isEqualTo("fake SQS failure");
     }
 
-    private DealCreatedEvent dealCreatedEvent(Long dealId, Long storeId) {
-        return new DealCreatedEvent(dealId, storeId, LocalDateTime.now());
+    private void recordDealCreated(Long dealId, Long storeId) {
+        outboxService.recordDealCreated(dealId, storeId, LocalDateTime.now());
     }
 
     private static class RecordingPublisher implements NotificationEventPublisher {

@@ -1,6 +1,5 @@
 package com.namatdang.namatdang.notification.outbox.entity;
 
-import com.namatdang.namatdang.notification.event.DealCreatedEvent;
 import com.namatdang.namatdang.notification.event.NotificationEventType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -97,15 +96,25 @@ public class NotificationEvent {
     @Column(name = "last_error", columnDefinition = "TEXT")
     private String lastError;
 
-    public static NotificationEvent dealCreated(DealCreatedEvent dealCreatedEvent) {
+    public static NotificationEvent dealCreated(
+            Long dealId,
+            Long storeId,
+            LocalDateTime dealCreatedAt
+    ) {
+        requirePositive(dealId, "dealId");
+        requirePositive(storeId, "storeId");
+        if (dealCreatedAt == null) {
+            throw new IllegalArgumentException("dealCreatedAt은 필수입니다.");
+        }
+
         NotificationEvent event = new NotificationEvent();
-        event.dealId = dealCreatedEvent.dealId();
-        event.storeId = dealCreatedEvent.storeId();
+        event.dealId = dealId;
+        event.storeId = storeId;
         event.eventType = NotificationEventType.DEAL_CREATED;
-        event.sourceRequestKey = "DEAL:%d:CREATED".formatted(dealCreatedEvent.dealId());
+        event.sourceRequestKey = "DEAL:%d:CREATED".formatted(dealId);
         event.status = NotificationEventStatus.PENDING;
         event.retryCount = 0;
-        event.occurredAt = dealCreatedEvent.occurredAt();
+        event.occurredAt = dealCreatedAt;
         return event;
     }
 
@@ -177,5 +186,11 @@ public class NotificationEvent {
             return value;
         }
         return value.substring(0, MAX_ERROR_LENGTH);
+    }
+
+    private static void requirePositive(Long value, String fieldName) {
+        if (value == null || value <= 0) {
+            throw new IllegalArgumentException(fieldName + "는 양수여야 합니다.");
+        }
     }
 }

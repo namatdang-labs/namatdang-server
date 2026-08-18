@@ -3,7 +3,6 @@ package com.namatdang.namatdang.notification.outbox;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.namatdang.namatdang.notification.event.DealCreatedEvent;
 import com.namatdang.namatdang.notification.event.NotificationEventMessage;
 import com.namatdang.namatdang.notification.event.NotificationEventType;
 import com.namatdang.namatdang.notification.outbox.entity.NotificationEvent;
@@ -42,10 +41,10 @@ class NotificationOutboxServiceTests {
     private EntityManager entityManager;
 
     @Test
-    void recordDealCreatedEventIdempotently() {
-        DealCreatedEvent dealCreatedEvent = dealCreatedEvent(101L, 11L);
-        notificationOutboxService.recordDealCreated(dealCreatedEvent);
-        notificationOutboxService.recordDealCreated(dealCreatedEvent);
+    void recordDealCreatedIdempotently() {
+        LocalDateTime dealCreatedAt = LocalDateTime.now();
+        notificationOutboxService.recordDealCreated(101L, 11L, dealCreatedAt);
+        notificationOutboxService.recordDealCreated(101L, 11L, dealCreatedAt);
 
         List<NotificationEvent> events = notificationEventRepository.findAll();
         assertThat(events).hasSize(1);
@@ -64,19 +63,19 @@ class NotificationOutboxServiceTests {
     @Test
     void duplicatedSourceRequestKeyCannotBeSavedDirectly() {
         notificationEventRepository.saveAndFlush(
-                NotificationEvent.dealCreated(dealCreatedEvent(102L, 12L))
+                NotificationEvent.dealCreated(102L, 12L, LocalDateTime.now())
         );
 
         assertThatThrownBy(() -> notificationEventRepository.saveAndFlush(
-                NotificationEvent.dealCreated(dealCreatedEvent(102L, 12L))
+                NotificationEvent.dealCreated(102L, 12L, LocalDateTime.now())
         )).isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
     void claimPendingEventsInIdOrderWithinBatchSize() {
-        notificationOutboxService.recordDealCreated(dealCreatedEvent(201L, 21L));
-        notificationOutboxService.recordDealCreated(dealCreatedEvent(202L, 22L));
-        notificationOutboxService.recordDealCreated(dealCreatedEvent(203L, 23L));
+        recordDealCreated(201L, 21L);
+        recordDealCreated(202L, 22L);
+        recordDealCreated(203L, 23L);
 
         List<NotificationEventMessage> claimedEvents = notificationOutboxService
                 .claimPublishableEvents(2, PUBLISHING_TIMEOUT);
@@ -105,7 +104,7 @@ class NotificationOutboxServiceTests {
 
     @Test
     void markClaimedEventAsPublished() {
-        notificationOutboxService.recordDealCreated(dealCreatedEvent(301L, 31L));
+        recordDealCreated(301L, 31L);
         Long eventId = claimSingleEvent();
 
         notificationOutboxService.markPublished(eventId);
@@ -120,7 +119,7 @@ class NotificationOutboxServiceTests {
 
     @Test
     void retryFailureAndStopAfterMaximumAttempts() {
-        notificationOutboxService.recordDealCreated(dealCreatedEvent(401L, 41L));
+        recordDealCreated(401L, 41L);
         Long eventId = claimSingleEvent();
 
         notificationOutboxService.recordPublishFailure(
@@ -153,7 +152,7 @@ class NotificationOutboxServiceTests {
 
     @Test
     void doNotClaimFreshPublishingEventAgain() {
-        notificationOutboxService.recordDealCreated(dealCreatedEvent(501L, 51L));
+        recordDealCreated(501L, 51L);
         claimSingleEvent();
 
         List<NotificationEventMessage> claimedAgain = notificationOutboxService
@@ -164,7 +163,7 @@ class NotificationOutboxServiceTests {
 
     @Test
     void reclaimPublishingEventAfterTimeout() {
-        notificationOutboxService.recordDealCreated(dealCreatedEvent(601L, 61L));
+        recordDealCreated(601L, 61L);
         Long eventId = claimSingleEvent();
         jdbcTemplate.update(
                 "UPDATE notification_events SET publishing_started_at = ? WHERE id = ?",
@@ -191,7 +190,7 @@ class NotificationOutboxServiceTests {
                 .eventId();
     }
 
-    private DealCreatedEvent dealCreatedEvent(Long dealId, Long storeId) {
-        return new DealCreatedEvent(dealId, storeId, LocalDateTime.now());
+    private void recordDealCreated(Long dealId, Long storeId) {
+        notificationOutboxService.recordDealCreated(dealId, storeId, LocalDateTime.now());
     }
 }
