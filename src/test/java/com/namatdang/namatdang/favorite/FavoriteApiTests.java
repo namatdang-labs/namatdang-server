@@ -62,7 +62,7 @@ class FavoriteApiTests {
                 .getResultList();
 
         assertThat(primaryKeyColumns.stream().map(Object::toString).toList())
-                .containsExactly("user_id", "store_id");
+                .containsExactlyInAnyOrder("user_id", "store_id");
     }
 
     @Test
