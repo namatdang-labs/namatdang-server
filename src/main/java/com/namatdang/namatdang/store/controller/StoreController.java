@@ -1,5 +1,7 @@
 package com.namatdang.namatdang.store.controller;
 
+import com.namatdang.namatdang.deal.dto.DealPageResponseDto;
+import com.namatdang.namatdang.deal.service.DealService;
 import com.namatdang.namatdang.store.dto.StorePageResponseDto;
 import com.namatdang.namatdang.store.dto.StoreResponseDto;
 import com.namatdang.namatdang.store.service.StoreService;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class StoreController {
 
     private final StoreService storeService;
+    private final DealService dealService;
 
     @GetMapping
     @Operation(summary = "매장 목록 조회 및 검색")
@@ -34,6 +37,15 @@ public class StoreController {
     @Operation(summary = "매장 상세 조회")
     public ResponseEntity<StoreResponseDto> getStoreDetail(@PathVariable Long storeId) {
         StoreResponseDto responseDto = storeService.getStore(storeId);
+        return ResponseEntity.ok(responseDto);
+    }
+
+    @GetMapping("/{storeId}/deals")
+    @Operation(summary = "매장의 판매 중 딜 목록 조회")
+    public ResponseEntity<DealPageResponseDto> getStoreDeals(@PathVariable Long storeId,
+                                                             @RequestParam(defaultValue = "0") int page,
+                                                             @RequestParam(defaultValue = "20") int size) {
+        DealPageResponseDto responseDto = dealService.getStoreDeals(storeId, page, size);
         return ResponseEntity.ok(responseDto);
     }
 }

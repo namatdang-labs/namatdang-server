@@ -33,6 +33,7 @@ services:
       mysql:
         condition: service_healthy
     environment:
+      TZ: Asia/Seoul
       DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
       DB_USERNAME: ${MYSQL_USER}
       DB_PASSWORD: ${MYSQL_PASSWORD}
