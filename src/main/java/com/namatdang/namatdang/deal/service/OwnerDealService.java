@@ -9,6 +9,7 @@ import com.namatdang.namatdang.deal.entity.DealStatus;
 import com.namatdang.namatdang.deal.repository.DealRepository;
 import com.namatdang.namatdang.exception.BusinessLogicException;
 import com.namatdang.namatdang.exception.ExceptionCode;
+import com.namatdang.namatdang.notification.event.NotificationEventRecorder;
 import com.namatdang.namatdang.store.entity.Store;
 import com.namatdang.namatdang.store.repository.StoreRepository;
 import com.namatdang.namatdang.user.entity.User;
@@ -35,6 +36,7 @@ public class OwnerDealService {
     private final DealRepository dealRepository;
     private final StoreRepository storeRepository;
     private final UserRepository userRepository;
+    private final NotificationEventRecorder notificationEventRecorder;
 
     @Transactional
     public DealDetailResponseDto createDeal(Long userId, Long storeId, DealCreateRequestDto requestDto) {
@@ -49,11 +51,11 @@ public class OwnerDealService {
         }
 
         Deal savedDeal = dealRepository.save(deal);
-
-        // TODO: #14 - 딜 공개가 확정되는 이 트랜잭션 안에서 notification_events 에
-        //  DEAL_CREATED 이벤트를 기록해야 한다(Transactional Outbox). 해당 엔티티를 알림
-        //  담당자가 만드는 중이라 지금은 비어 있다. 머지된 뒤 save() 한 줄을 여기에 추가한다.
-        //  발행·수신·FCM 발송은 알림 담당 범위.
+        notificationEventRecorder.recordDealCreated(
+                savedDeal.getId(),
+                store.getId(),
+                savedDeal.getCreatedAt()
+        );
 
         return DealDetailResponseDto.from(savedDeal);
     }
