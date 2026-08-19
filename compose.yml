@@ -44,5 +44,24 @@ services:
     ports:
       - "8080:8080"
 
+  localstack:
+    image: localstack/localstack:4.14
+    container_name: namatdang-localstack
+    profiles: ["aws-local"]
+    environment:
+      SERVICES: sqs
+      AWS_DEFAULT_REGION: ap-northeast-2
+      SQS_ENDPOINT_STRATEGY: path
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./infra/localstack/init:/etc/localstack/init/ready.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "awslocal sqs list-queues >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
 volumes:
   mysql-data:

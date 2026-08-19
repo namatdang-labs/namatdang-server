@@ -11,6 +11,7 @@ import com.namatdang.namatdang.push.entity.FcmRegistration;
 import com.namatdang.namatdang.push.entity.PushDeviceType;
 import com.namatdang.namatdang.push.repository.FcmRegistrationRepository;
 import com.namatdang.namatdang.push.service.PushTokenService;
+import com.namatdang.namatdang.support.IntegrationTestSupport;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.entity.UserRole;
 import com.namatdang.namatdang.user.repository.UserRepository;
@@ -30,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-class PushTokenApiTests {
+class PushTokenApiTests extends IntegrationTestSupport {
 
     @Autowired
     private MockMvc mockMvc;

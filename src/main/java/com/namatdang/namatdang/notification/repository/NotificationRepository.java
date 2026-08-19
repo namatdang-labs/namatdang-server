@@ -2,6 +2,7 @@ package com.namatdang.namatdang.notification.repository;
 
 import com.namatdang.namatdang.notification.entity.Notification;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -11,6 +12,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
+
+    List<Notification> findAllByEventId(Long eventId);
 
     Slice<Notification> findByRecipientUserIdAndCreatedAtGreaterThanEqualOrderByIdDesc(
             Long recipientUserId,

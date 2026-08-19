@@ -28,6 +28,31 @@ logging:
     org.hibernate.SQL: debug
     org.hibernate.orm.jdbc.bind: trace
 
+notification:
+  push:
+    enabled: ${NOTIFICATION_PUSH_ENABLED:false}
+    firebase:
+      project-id: ${FIREBASE_PROJECT_ID:}
+    batch-size: ${NOTIFICATION_PUSH_BATCH_SIZE:20}
+    sending-timeout: ${NOTIFICATION_PUSH_SENDING_TIMEOUT:5m}
+    retry-delay: ${NOTIFICATION_PUSH_RETRY_DELAY:30s}
+    max-attempt-count: ${NOTIFICATION_PUSH_MAX_ATTEMPTS:5}
+    worker-fixed-delay-ms: ${NOTIFICATION_PUSH_WORKER_DELAY_MS:1000}
+  messaging:
+    sqs:
+      enabled: ${NOTIFICATION_SQS_ENABLED:false}
+      consumer-enabled: ${NOTIFICATION_SQS_CONSUMER_ENABLED:false}
+      region: ${AWS_REGION:ap-northeast-2}
+      endpoint: ${NOTIFICATION_SQS_ENDPOINT:}
+      queue-url: ${NOTIFICATION_SQS_QUEUE_URL:}
+      publish-batch-size: ${NOTIFICATION_SQS_PUBLISH_BATCH_SIZE:10}
+      publishing-timeout: ${NOTIFICATION_SQS_PUBLISHING_TIMEOUT:5m}
+      publish-retry-delay: ${NOTIFICATION_SQS_PUBLISH_RETRY_DELAY:10s}
+      publish-max-attempt-count: ${NOTIFICATION_SQS_PUBLISH_MAX_ATTEMPTS:5}
+      publisher-fixed-delay-ms: ${NOTIFICATION_SQS_PUBLISHER_DELAY_MS:1000}
+      receive-batch-size: ${NOTIFICATION_SQS_RECEIVE_BATCH_SIZE:10}
+      consumer-fixed-delay-ms: ${NOTIFICATION_SQS_CONSUMER_DELAY_MS:1000}
+
 security:
   jwt:
     private-key-base64: "${JWT_PRIVATE_KEY_BASE64:}"
