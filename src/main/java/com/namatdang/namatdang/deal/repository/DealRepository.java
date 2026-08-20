@@ -2,12 +2,16 @@ package com.namatdang.namatdang.deal.repository;
 
 import com.namatdang.namatdang.deal.entity.Deal;
 import com.namatdang.namatdang.deal.entity.DealStatus;
+import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface DealRepository extends JpaRepository<Deal, Long> {
 
@@ -34,4 +38,12 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
 
     @EntityGraph(attributePaths = {"store", "items"})
     Optional<Deal> findWithItemsById(Long dealId);
+
+    /**
+     * 예약 생성·취소 트랜잭션에서 Deal 행을 잠근다. 품목 잠금보다 먼저 호출해 잠금 순서를
+     * 고정하고, 마감 여부와 판매 상태를 잠금 후 다시 확인한다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select deal from Deal deal where deal.id = :dealId")
+    Optional<Deal> findByIdForUpdate(@Param("dealId") Long dealId);
 }

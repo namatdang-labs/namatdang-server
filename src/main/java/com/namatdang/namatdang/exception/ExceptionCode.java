@@ -16,6 +16,12 @@ public enum ExceptionCode {
     DEAL_NOT_FOUND(HttpStatus.NOT_FOUND, "DEAL_NOT_FOUND", "딜을 찾을 수 없습니다."),
     DEAL_NOT_RESERVABLE(HttpStatus.CONFLICT, "DEAL_NOT_RESERVABLE", "예약할 수 없는 딜입니다."),
     OUT_OF_STOCK(HttpStatus.CONFLICT, "OUT_OF_STOCK", "재고가 부족해 예약하지 못했습니다."),
+    RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "RESERVATION_NOT_FOUND", "예약을 찾을 수 없습니다."),
+    RESERVATION_ALREADY_EXISTS(HttpStatus.CONFLICT, "RESERVATION_ALREADY_EXISTS", "이미 예약한 딜입니다."),
+    RESERVATION_NOT_CANCELABLE(HttpStatus.CONFLICT, "RESERVATION_NOT_CANCELABLE", "취소할 수 없는 예약입니다."),
+    RESERVATION_NOT_PICKUPABLE(HttpStatus.CONFLICT, "RESERVATION_NOT_PICKUPABLE", "수령 완료할 수 없는 예약입니다."),
+    IDEMPOTENCY_KEY_REUSED(HttpStatus.CONFLICT, "IDEMPOTENCY_KEY_REUSED", "같은 멱등키로 다른 요청을 보낼 수 없습니다."),
+    CONCURRENT_REQUEST_CONFLICT(HttpStatus.CONFLICT, "CONCURRENT_REQUEST_CONFLICT", "같은 요청이 처리 중입니다. 잠시 후 다시 시도해 주세요."),
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_NOT_FOUND", "알림을 찾을 수 없습니다."),
     PUSH_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "PUSH_TOKEN_NOT_FOUND", "Push 토큰을 찾을 수 없습니다."),
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "요청 값을 확인해 주세요.");
