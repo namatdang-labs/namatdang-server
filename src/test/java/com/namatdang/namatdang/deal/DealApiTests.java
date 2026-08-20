@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.namatdang.namatdang.deal.entity.Deal;
 import com.namatdang.namatdang.deal.entity.DealItem;
+import com.namatdang.namatdang.deal.entity.DealStatus;
 import com.namatdang.namatdang.deal.repository.DealRepository;
 import com.namatdang.namatdang.security.JwtTokenProvider;
 import com.namatdang.namatdang.store.entity.Store;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,7 +50,7 @@ class DealApiTests extends IntegrationTestSupport {
 
     @Test
     void consumerGetsSellingDeals() throws Exception {
-        long existingDealCount = dealRepository.count();
+        long existingDealCount = currentSellingDealCount();
         User owner = saveUser(UserRole.OWNER);
         User consumer = saveUser(UserRole.CONSUMER);
         Store store = saveStore(owner);
@@ -69,7 +71,7 @@ class DealApiTests extends IntegrationTestSupport {
 
     @Test
     void dealPastSalesEndsAtIsNotListed() throws Exception {
-        long existingDealCount = dealRepository.count();
+        long existingDealCount = currentSellingDealCount();
         User owner = saveUser(UserRole.OWNER);
         User consumer = saveUser(UserRole.CONSUMER);
         Store store = saveStore(owner);
@@ -202,7 +204,15 @@ class DealApiTests extends IntegrationTestSupport {
     }
 
     private String bearerToken(User user) {
-        return "Bearer " + jwtTokenProvider.issue(user.getId(), user.getRole());
+        return "Bearer " + jwtTokenProvider.issue(user.getId());
+    }
+
+    private long currentSellingDealCount() {
+        return dealRepository.findByStatusAndSalesEndsAtAfter(
+                DealStatus.SELLING,
+                LocalDateTime.now(),
+                Pageable.unpaged()
+        ).getTotalElements();
     }
 
     private User saveUser(UserRole role) {
