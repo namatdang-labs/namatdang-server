@@ -5,6 +5,8 @@ import com.namatdang.namatdang.exception.ExceptionCode;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import lombok.Getter;
@@ -46,6 +48,11 @@ public class StoreMapRequestDto {
 
     @Schema(description = "매장명 또는 주소 검색어", example = "단팥빵")
     private String keyword;
+
+    @Min(value = 1, message = "조회 개수는 1개 이상이어야 합니다.")
+    @Max(value = 100, message = "조회 개수는 100개 이하여야 합니다.")
+    @Schema(description = "조회할 최대 매장 수 (기본: 50, 최대: 100)", example = "50", defaultValue = "50")
+    private int limit = 50;
 
     public StoreMapRequestDto(BigDecimal minLat, BigDecimal maxLat, BigDecimal minLng, BigDecimal maxLng,
                               Boolean onlyDiscounting, String keyword) {

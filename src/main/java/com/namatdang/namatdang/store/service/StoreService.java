@@ -10,6 +10,7 @@ import com.namatdang.namatdang.store.dto.StorePageResponseDto;
 import com.namatdang.namatdang.store.dto.StoreResponseDto;
 import com.namatdang.namatdang.store.entity.Store;
 import com.namatdang.namatdang.store.repository.StoreRepository;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashMap;
@@ -73,30 +74,40 @@ public class StoreService {
         boolean hasKeyword = StringUtils.hasText(requestDto.getKeyword());
         String normalizedKeyword = hasKeyword ? requestDto.getKeyword().strip() : null;
         boolean onlyDiscounting = Boolean.TRUE.equals(requestDto.getOnlyDiscounting());
+        BigDecimal centerLat = midpoint(requestDto.getMinLat(), requestDto.getMaxLat());
+        BigDecimal centerLng = midpoint(requestDto.getMinLng(), requestDto.getMaxLng());
+        int limit = requestDto.getLimit();
 
         if (onlyDiscounting) {
             if (hasKeyword) {
                 return storeRepository.findInBoundsWithActiveDealsAndKeyword(
                         requestDto.getMinLat(), requestDto.getMaxLat(),
                         requestDto.getMinLng(), requestDto.getMaxLng(),
-                        normalizedKeyword, DealStatus.SELLING, now);
+                        normalizedKeyword, DealStatus.SELLING.name(), now,
+                        centerLat, centerLng, limit);
             }
             return storeRepository.findInBoundsWithActiveDeals(
                     requestDto.getMinLat(), requestDto.getMaxLat(),
                     requestDto.getMinLng(), requestDto.getMaxLng(),
-                    DealStatus.SELLING, now);
+                    DealStatus.SELLING.name(), now, centerLat, centerLng, limit);
         }
 
         if (hasKeyword) {
             return storeRepository.findInBoundsWithKeyword(
                     requestDto.getMinLat(), requestDto.getMaxLat(),
                     requestDto.getMinLng(), requestDto.getMaxLng(),
-                    normalizedKeyword);
+                    normalizedKeyword, DealStatus.SELLING.name(), now,
+                    centerLat, centerLng, limit);
         }
 
         return storeRepository.findInBounds(
                 requestDto.getMinLat(), requestDto.getMaxLat(),
-                requestDto.getMinLng(), requestDto.getMaxLng());
+                requestDto.getMinLng(), requestDto.getMaxLng(),
+                centerLat, centerLng, limit);
+    }
+
+    private BigDecimal midpoint(BigDecimal minimum, BigDecimal maximum) {
+        return minimum.add(maximum).divide(BigDecimal.valueOf(2));
     }
 
     private Map<Long, Long> getActiveDealCounts(List<Long> storeIds, LocalDateTime now) {
@@ -136,4 +147,3 @@ public class StoreService {
         }
     }
 }
-
