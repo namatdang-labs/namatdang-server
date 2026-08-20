@@ -30,8 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class OwnerDealService {
 
     private static final int MAX_PAGE_SIZE = 100;
-    private static final Duration MIN_PICKUP_DEADLINE_GAP = Duration.ofMinutes(10);
-    private static final Duration MAX_PICKUP_DEADLINE_GAP = Duration.ofHours(24);
+    private static final Duration MIN_SALES_END_GAP = Duration.ofMinutes(10);
+    private static final Duration MAX_SALES_END_GAP = Duration.ofHours(24);
 
     private final DealRepository dealRepository;
     private final StoreRepository storeRepository;
@@ -43,9 +43,9 @@ public class OwnerDealService {
         User owner = findOwnerById(userId);
         Store store = findStoreByIdAndOwnerId(storeId, owner.getId());
 
-        validatePickupDeadline(requestDto.getPickupDeadline());
+        validateSalesEndsAt(requestDto.getSalesEndsAt());
 
-        Deal deal = new Deal(store, requestDto.getPickupDeadline(), requestDto.getDescription());
+        Deal deal = new Deal(store, requestDto.getSalesEndsAt(), requestDto.getDescription());
         for (DealItemCreateRequestDto itemRequestDto : requestDto.getItems()) {
             deal.addItem(itemRequestDto.toEntity());
         }
@@ -116,13 +116,13 @@ public class OwnerDealService {
     }
 
     /**
-     * DR-05: 수령 마감시각은 현재로부터 10분 이후 ~ 24시간 이내여야 한다.
+     * DR-05: 판매 마감시각은 현재로부터 10분 이후 ~ 24시간 이내여야 한다.
      */
-    private void validatePickupDeadline(LocalDateTime pickupDeadline) {
+    private void validateSalesEndsAt(LocalDateTime salesEndsAt) {
         LocalDateTime now = LocalDateTime.now();
 
-        if (pickupDeadline.isBefore(now.plus(MIN_PICKUP_DEADLINE_GAP))
-                || pickupDeadline.isAfter(now.plus(MAX_PICKUP_DEADLINE_GAP))) {
+        if (salesEndsAt.isBefore(now.plus(MIN_SALES_END_GAP))
+                || salesEndsAt.isAfter(now.plus(MAX_SALES_END_GAP))) {
             throw new BusinessLogicException(ExceptionCode.INVALID_INPUT_VALUE);
         }
     }

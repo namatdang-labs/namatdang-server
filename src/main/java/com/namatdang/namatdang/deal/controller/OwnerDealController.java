@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/owner")
 @Tag(name = "딜 관리", description = "사장님 딜 등록 및 조회 API")
 // TODO: #7 - 딜 수정·취소 엔드포인트가 아직 없다. 다음 작업으로 아래를 추가한다.
-//   - PATCH /owner/deals/{dealId}         : 수령 마감시각·안내사항 수정 (DEAL-08)
+//   - PATCH /owner/deals/{dealId}         : 판매 마감시각·안내사항 수정 (DEAL-08)
 //   - PATCH /owner/deal-items/{dealItemId}: 상품명·정가·판매가·등록 수량 수정
 //     (DR-11: 등록 수량은 예약·판매 반영 수량보다 작게 줄일 수 없고, 품목 추가·삭제는 불가)
 //   - POST  /owner/deals/{dealId}/cancel  : 유효 예약이 없을 때만 취소 (DEAL-03)

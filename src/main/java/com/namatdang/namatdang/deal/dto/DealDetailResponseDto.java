@@ -14,7 +14,7 @@ public class DealDetailResponseDto {
     private Long dealId;
     private Long storeId;
     private String storeName;
-    private LocalDateTime pickupDeadline;
+    private LocalDateTime salesEndsAt;
     private DealStatus status;
     private String description;
     private List<DealItemResponseDto> items;
@@ -28,7 +28,7 @@ public class DealDetailResponseDto {
         return new DealDetailResponseDto(deal.getId(),
                                          deal.getStore().getId(),
                                          deal.getStore().getName(),
-                                         deal.getPickupDeadline(),
+                                         deal.getSalesEndsAt(),
                                          deal.displayStatus(LocalDateTime.now()),
                                          deal.getDescription(),
                                          items,

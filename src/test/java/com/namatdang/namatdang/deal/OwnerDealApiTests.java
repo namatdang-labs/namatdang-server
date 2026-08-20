@@ -18,6 +18,7 @@ import com.namatdang.namatdang.user.repository.UserRepository;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,15 +52,17 @@ class OwnerDealApiTests extends IntegrationTestSupport {
     void ownerCreatesDealWithItems() throws Exception {
         User owner = saveUser(UserRole.OWNER);
         Store store = saveStore(owner);
+        LocalDateTime salesEndsAt = hoursLater(3);
 
         mockMvc.perform(post("/api/v1/owner/stores/{storeId}/deals", store.getId())
                         .header("Authorization", bearerToken(owner))
                         .header("X-Request-Id", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(dealRequestBody(hoursLater(3), 5, 3)))
+                        .content(dealRequestBody(salesEndsAt, 5, 3)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.dealId").isNumber())
                 .andExpect(jsonPath("$.storeId").value(store.getId()))
+                .andExpect(jsonPath("$.salesEndsAt").value(format(salesEndsAt)))
                 .andExpect(jsonPath("$.status").value("SELLING"))
                 .andExpect(jsonPath("$.items.length()").value(2))
                 .andExpect(jsonPath("$.items[0].totalQuantity").value(5))
@@ -112,7 +115,7 @@ class OwnerDealApiTests extends IntegrationTestSupport {
                                  .formatted(i));
         }
         String body = """
-                {"pickupDeadline":"%s","description":"안내","items":[%s]}"""
+                {"salesEndsAt":"%s","description":"안내","items":[%s]}"""
                 .formatted(format(hoursLater(3)), items);
 
         mockMvc.perform(post("/api/v1/owner/stores/{storeId}/deals", store.getId())
@@ -124,7 +127,7 @@ class OwnerDealApiTests extends IntegrationTestSupport {
     }
 
     @Test
-    void creatingDealWithTooEarlyPickupDeadlineReturnsBadRequest() throws Exception {
+    void creatingDealWithTooEarlySalesEndsAtReturnsBadRequest() throws Exception {
         User owner = saveUser(UserRole.OWNER);
         Store store = saveStore(owner);
 
@@ -155,7 +158,7 @@ class OwnerDealApiTests extends IntegrationTestSupport {
         Store store = saveStore(owner);
 
         String body = """
-                {"pickupDeadline":"%s","description":"안내",
+                {"salesEndsAt":"%s","description":"안내",
                  "items":[{"name":"소금빵","totalQuantity":100,"originalPrice":4000,"salePrice":2000}]}"""
                 .formatted(format(hoursLater(3)));
 
@@ -171,13 +174,15 @@ class OwnerDealApiTests extends IntegrationTestSupport {
     void ownerGetsMyStoreDeals() throws Exception {
         User owner = saveUser(UserRole.OWNER);
         Store store = saveStore(owner);
-        Deal deal = saveDeal(store, hoursLater(3), 5);
+        LocalDateTime salesEndsAt = hoursLater(3);
+        Deal deal = saveDeal(store, salesEndsAt, 5);
 
         mockMvc.perform(get("/api/v1/owner/stores/{storeId}/deals", store.getId())
                         .header("Authorization", bearerToken(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content[0].dealId").value(deal.getId()))
+                .andExpect(jsonPath("$.content[0].salesEndsAt").value(format(salesEndsAt)))
                 .andExpect(jsonPath("$.content[0].itemCount").value(1));
     }
 
@@ -198,12 +203,14 @@ class OwnerDealApiTests extends IntegrationTestSupport {
     void ownerGetsMyDealDetail() throws Exception {
         User owner = saveUser(UserRole.OWNER);
         Store store = saveStore(owner);
-        Deal deal = saveDeal(store, hoursLater(3), 5);
+        LocalDateTime salesEndsAt = hoursLater(3);
+        Deal deal = saveDeal(store, salesEndsAt, 5);
 
         mockMvc.perform(get("/api/v1/owner/deals/{dealId}", deal.getId())
                         .header("Authorization", bearerToken(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.dealId").value(deal.getId()))
+                .andExpect(jsonPath("$.salesEndsAt").value(format(salesEndsAt)))
                 .andExpect(jsonPath("$.items.length()").value(1));
     }
 
@@ -220,21 +227,22 @@ class OwnerDealApiTests extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
 
-    private String dealRequestBody(LocalDateTime pickupDeadline, int firstQuantity, int secondQuantity) {
+    private String dealRequestBody(LocalDateTime salesEndsAt, int firstQuantity, int secondQuantity) {
         return """
-                {"pickupDeadline":"%s",
+                {"salesEndsAt":"%s",
                  "description":"마감 임박 상품입니다.",
                  "items":[{"name":"소금빵","totalQuantity":%d,"originalPrice":4000,"salePrice":2000},
                           {"name":"크루아상","totalQuantity":%d,"originalPrice":5000,"salePrice":3000}]}"""
-                .formatted(format(pickupDeadline), firstQuantity, secondQuantity);
+                .formatted(format(salesEndsAt), firstQuantity, secondQuantity);
     }
 
     private String format(LocalDateTime dateTime) {
         return dateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
 
+    // 초 단위로 잘라 DB 왕복이나 JSON 직렬화의 소수점 자리 차이로 값 비교가 흔들리지 않게 한다.
     private LocalDateTime hoursLater(int hours) {
-        return LocalDateTime.now().plusHours(hours);
+        return LocalDateTime.now().plusHours(hours).truncatedTo(ChronoUnit.SECONDS);
     }
 
     private String bearerToken(User user) {
@@ -262,8 +270,8 @@ class OwnerDealApiTests extends IntegrationTestSupport {
         return storeRepository.saveAndFlush(store);
     }
 
-    private Deal saveDeal(Store store, LocalDateTime pickupDeadline, int quantity) {
-        Deal deal = new Deal(store, pickupDeadline, "마감 임박 상품입니다.");
+    private Deal saveDeal(Store store, LocalDateTime salesEndsAt, int quantity) {
+        Deal deal = new Deal(store, salesEndsAt, "마감 임박 상품입니다.");
         deal.addItem(new DealItem("소금빵", quantity, 4000, 2000));
         return dealRepository.saveAndFlush(deal);
     }

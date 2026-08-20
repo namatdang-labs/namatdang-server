@@ -16,15 +16,15 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
     // items의 N+1은 Deal.items의 @BatchSize로 완화한다.
 
     @EntityGraph(attributePaths = "store")
-    Page<Deal> findByStatusAndPickupDeadlineAfter(DealStatus status,
-                                                  LocalDateTime pickupDeadline,
-                                                  Pageable pageable);
+    Page<Deal> findByStatusAndSalesEndsAtAfter(DealStatus status,
+                                               LocalDateTime salesEndsAt,
+                                               Pageable pageable);
 
     @EntityGraph(attributePaths = "store")
-    Page<Deal> findByStoreIdAndStatusAndPickupDeadlineAfter(Long storeId,
-                                                            DealStatus status,
-                                                            LocalDateTime pickupDeadline,
-                                                            Pageable pageable);
+    Page<Deal> findByStoreIdAndStatusAndSalesEndsAtAfter(Long storeId,
+                                                         DealStatus status,
+                                                         LocalDateTime salesEndsAt,
+                                                         Pageable pageable);
 
     @EntityGraph(attributePaths = "store")
     Page<Deal> findByStoreId(Long storeId, Pageable pageable);
