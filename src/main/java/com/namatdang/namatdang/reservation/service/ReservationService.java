@@ -10,6 +10,7 @@ import com.namatdang.namatdang.idempotency.entity.IdempotencyOperation;
 import com.namatdang.namatdang.idempotency.entity.IdempotencyRequest;
 import com.namatdang.namatdang.idempotency.service.IdempotencyService;
 import com.namatdang.namatdang.idempotency.service.IdempotentResponse;
+import com.namatdang.namatdang.notification.event.NotificationEventRecorder;
 import com.namatdang.namatdang.reservation.dto.ReservationCreateRequestDto;
 import com.namatdang.namatdang.reservation.dto.ReservationDetailResponseDto;
 import com.namatdang.namatdang.reservation.dto.ReservationItemCreateRequestDto;
@@ -56,6 +57,7 @@ public class ReservationService {
     private final DealItemRepository dealItemRepository;
     private final UserRepository userRepository;
     private final IdempotencyService idempotencyService;
+    private final NotificationEventRecorder notificationEventRecorder;
 
     @Transactional
     public IdempotentResponse createReservation(Long userId,
@@ -122,6 +124,11 @@ public class ReservationService {
 
         // 도메인 변경과 같은 트랜잭션에서 커밋되므로, 실패하면 예약·재고·멱등 기록이 함께 롤백된다.
         idempotencyService.complete(idempotencyRequest, 201, responseDto);
+        notificationEventRecorder.recordReservationConfirmed(
+                savedReservation.getId(),
+                deal.getStore().getId(),
+                savedReservation.getCreatedAt()
+        );
 
         return IdempotentResponse.created(responseDto);
     }
@@ -163,6 +170,13 @@ public class ReservationService {
 
         ReservationDetailResponseDto responseDto = ReservationDetailResponseDto.from(reservation);
         idempotencyService.complete(idempotencyRequest, 200, responseDto);
+        if (canceled) {
+            notificationEventRecorder.recordReservationCanceled(
+                    reservation.getId(),
+                    deal.getStore().getId(),
+                    reservation.getCanceledAt()
+            );
+        }
 
         return IdempotentResponse.ok(responseDto);
     }

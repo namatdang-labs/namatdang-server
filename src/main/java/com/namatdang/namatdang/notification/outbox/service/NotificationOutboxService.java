@@ -28,11 +28,35 @@ public class NotificationOutboxService implements NotificationEventRecorder {
             Long storeId,
             LocalDateTime dealCreatedAt
     ) {
-        NotificationEvent event = NotificationEvent.dealCreated(dealId, storeId, dealCreatedAt);
-        if (notificationEventRepository.existsBySourceRequestKey(event.getSourceRequestKey())) {
-            return;
-        }
-        notificationEventRepository.save(event);
+        saveIfAbsent(NotificationEvent.dealCreated(dealId, storeId, dealCreatedAt));
+    }
+
+    @Override
+    @Transactional
+    public void recordReservationConfirmed(
+            Long reservationId,
+            Long storeId,
+            LocalDateTime reservationCreatedAt
+    ) {
+        saveIfAbsent(NotificationEvent.reservationConfirmed(
+                reservationId,
+                storeId,
+                reservationCreatedAt
+        ));
+    }
+
+    @Override
+    @Transactional
+    public void recordReservationCanceled(
+            Long reservationId,
+            Long storeId,
+            LocalDateTime reservationCanceledAt
+    ) {
+        saveIfAbsent(NotificationEvent.reservationCanceled(
+                reservationId,
+                storeId,
+                reservationCanceledAt
+        ));
     }
 
     @Transactional
@@ -61,6 +85,7 @@ public class NotificationOutboxService implements NotificationEventRecorder {
                         event.getId(),
                         event.getEventType(),
                         event.getDealId(),
+                        event.getReservationId(),
                         event.getStoreId(),
                         event.getOccurredAt()
                 ))
@@ -104,5 +129,12 @@ public class NotificationOutboxService implements NotificationEventRecorder {
         if (batchSize <= 0 || batchSize > MAX_BATCH_SIZE) {
             throw new IllegalArgumentException("batchSize는 1 이상 100 이하여야 합니다.");
         }
+    }
+
+    private void saveIfAbsent(NotificationEvent event) {
+        if (notificationEventRepository.existsBySourceRequestKey(event.getSourceRequestKey())) {
+            return;
+        }
+        notificationEventRepository.save(event);
     }
 }

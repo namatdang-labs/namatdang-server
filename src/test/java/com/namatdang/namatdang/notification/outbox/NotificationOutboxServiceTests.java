@@ -73,6 +73,52 @@ class NotificationOutboxServiceTests extends IntegrationTestSupport {
     }
 
     @Test
+    void recordReservationEventsIdempotently() {
+        LocalDateTime confirmedAt = LocalDateTime.now().minusMinutes(1);
+        LocalDateTime canceledAt = LocalDateTime.now();
+
+        notificationOutboxService.recordReservationConfirmed(103L, 13L, confirmedAt);
+        notificationOutboxService.recordReservationConfirmed(103L, 13L, confirmedAt);
+        notificationOutboxService.recordReservationCanceled(103L, 13L, canceledAt);
+        notificationOutboxService.recordReservationCanceled(103L, 13L, canceledAt);
+
+        List<NotificationEvent> events = notificationEventRepository.findAll(Sort.by("id"));
+        assertThat(events).hasSize(2);
+
+        NotificationEvent confirmed = events.get(0);
+        assertThat(confirmed.getDealId()).isNull();
+        assertThat(confirmed.getReservationId()).isEqualTo(103L);
+        assertThat(confirmed.getStoreId()).isEqualTo(13L);
+        assertThat(confirmed.getEventType()).isEqualTo(NotificationEventType.RESERVATION_CONFIRMED);
+        assertThat(confirmed.getSourceRequestKey()).isEqualTo("RESERVATION:103:CONFIRMED");
+        assertThat(confirmed.getOccurredAt()).isEqualTo(confirmedAt);
+
+        NotificationEvent canceled = events.get(1);
+        assertThat(canceled.getDealId()).isNull();
+        assertThat(canceled.getReservationId()).isEqualTo(103L);
+        assertThat(canceled.getStoreId()).isEqualTo(13L);
+        assertThat(canceled.getEventType()).isEqualTo(NotificationEventType.RESERVATION_CANCELED);
+        assertThat(canceled.getSourceRequestKey()).isEqualTo("RESERVATION:103:CANCELED");
+        assertThat(canceled.getOccurredAt()).isEqualTo(canceledAt);
+    }
+
+    @Test
+    void claimReservationEventWithReservationIdentifier() {
+        notificationOutboxService.recordReservationConfirmed(104L, 14L, LocalDateTime.now());
+
+        NotificationEventMessage message = notificationOutboxService
+                .claimPublishableEvents(1, PUBLISHING_TIMEOUT)
+                .getFirst();
+
+        assertThat(message.schemaVersion()).isEqualTo(1);
+        assertThat(message.eventType()).isEqualTo(NotificationEventType.RESERVATION_CONFIRMED);
+        assertThat(message.dealId()).isNull();
+        assertThat(message.reservationId()).isEqualTo(104L);
+        assertThat(message.storeId()).isEqualTo(14L);
+        assertThat(message.occurredAt()).isNotNull();
+    }
+
+    @Test
     void claimPendingEventsInIdOrderWithinBatchSize() {
         recordDealCreated(201L, 21L);
         recordDealCreated(202L, 22L);

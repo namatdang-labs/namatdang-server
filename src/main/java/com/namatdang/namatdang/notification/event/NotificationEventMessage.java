@@ -7,6 +7,7 @@ public record NotificationEventMessage(
         Long eventId,
         NotificationEventType eventType,
         Long dealId,
+        Long reservationId,
         Long storeId,
         LocalDateTime occurredAt
 ) {
@@ -17,6 +18,7 @@ public record NotificationEventMessage(
             Long eventId,
             NotificationEventType eventType,
             Long dealId,
+            Long reservationId,
             Long storeId,
             LocalDateTime occurredAt
     ) {
@@ -25,6 +27,7 @@ public record NotificationEventMessage(
                 eventId,
                 eventType,
                 dealId,
+                reservationId,
                 storeId,
                 occurredAt
         );

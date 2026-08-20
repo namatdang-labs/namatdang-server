@@ -34,6 +34,10 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     @EntityGraph(attributePaths = {"deal", "deal.store", "items"})
     Optional<Reservation> findWithItemsById(Long reservationId);
 
+    @EntityGraph(attributePaths = {"consumer", "deal", "deal.store", "deal.store.owner"})
+    @Query("select reservation from Reservation reservation where reservation.id = :reservationId")
+    Optional<Reservation> findNotificationTargetById(@Param("reservationId") Long reservationId);
+
     /**
      * 취소와 수령 완료가 공유하는 잠금이다. 두 처리가 같은 예약 행을 두고 경합하면 먼저 잠금을
      * 얻은 트랜잭션만 상태를 확정하고, 나중 요청은 확정된 상태를 다시 읽어 반대 전이를 거절한다(INV-06).
