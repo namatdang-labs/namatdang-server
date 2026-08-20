@@ -28,6 +28,14 @@ public interface FavoriteRepository extends JpaRepository<Favorite, FavoriteId> 
             """)
     List<Favorite> findAllByUserIdInRegistrationOrder(@Param("userId") Long userId);
 
+    @Query("""
+            SELECT favorite.user.id
+            FROM Favorite favorite
+            WHERE favorite.store.id = :storeId
+            ORDER BY favorite.user.id ASC
+            """)
+    List<Long> findUserIdsByStoreId(@Param("storeId") Long storeId);
+
     long deleteByUserIdAndStoreId(Long userId, Long storeId);
 
     void deleteAllByUserId(Long userId);
