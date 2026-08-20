@@ -16,6 +16,7 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageResponse;
 import software.amazon.awssdk.services.sqs.model.Message;
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageResponse;
@@ -67,7 +68,8 @@ class SqsNotificationAdapterTests extends IntegrationTestSupport {
                 objectMapper,
                 handledMessage::set,
                 QUEUE_URL,
-                10
+                10,
+                20
         );
 
         assertThat(consumer.pollOnce()).isEqualTo(1);
@@ -89,12 +91,38 @@ class SqsNotificationAdapterTests extends IntegrationTestSupport {
                     throw new IllegalStateException("temporary database failure");
                 },
                 QUEUE_URL,
-                10
+                10,
+                20
         );
 
         assertThat(consumer.pollOnce()).isEqualTo(1);
 
         assertThat(deletedRequest.get()).isNull();
+    }
+
+    @Test
+    void useConfiguredLongPollingWaitTime() {
+        AtomicReference<ReceiveMessageRequest> receivedRequest = new AtomicReference<>();
+        SqsClient sqsClient = proxyClient((methodName, arguments) -> {
+            if (methodName.equals("receiveMessage")) {
+                receivedRequest.set((ReceiveMessageRequest) arguments[0]);
+                return ReceiveMessageResponse.builder().messages(List.of()).build();
+            }
+            return defaultResponse(methodName);
+        });
+        SqsNotificationEventConsumer consumer = new SqsNotificationEventConsumer(
+                sqsClient,
+                objectMapper,
+                message -> {
+                },
+                QUEUE_URL,
+                10,
+                20
+        );
+
+        assertThat(consumer.pollOnce()).isZero();
+
+        assertThat(receivedRequest.get().waitTimeSeconds()).isEqualTo(20);
     }
 
     private SqsClient receivingClient(

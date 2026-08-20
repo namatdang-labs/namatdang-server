@@ -117,6 +117,7 @@ class FcmRegistrationNotificationAdapterTests extends IntegrationTestSupport {
                 EVENT_ID,
                 NotificationEventType.DEAL_CREATED,
                 DEAL_ID,
+                null,
                 STORE_ID,
                 LocalDateTime.now()
         ));

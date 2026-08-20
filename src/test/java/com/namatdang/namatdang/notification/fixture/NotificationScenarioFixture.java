@@ -26,6 +26,7 @@ public final class NotificationScenarioFixture {
                 EVENT_ID,
                 NotificationEventType.DEAL_CREATED,
                 DEAL_ID,
+                null,
                 STORE_ID,
                 LocalDateTime.of(2026, 8, 16, 12, 0)
         );

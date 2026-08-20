@@ -20,6 +20,7 @@ public class NotificationSqsProperties {
     private Duration publishRetryDelay = Duration.ofSeconds(10);
     private int publishMaxAttemptCount = 5;
     private int receiveBatchSize = 10;
+    private int receiveWaitTimeSeconds = 20;
 
     public void validate() {
         if (region == null || region.isBlank()) {
@@ -33,6 +34,9 @@ public class NotificationSqsProperties {
         }
         if (receiveBatchSize <= 0 || receiveBatchSize > 10) {
             throw new IllegalStateException("receive-batch-size는 1 이상 10 이하여야 합니다.");
+        }
+        if (receiveWaitTimeSeconds < 0 || receiveWaitTimeSeconds > 20) {
+            throw new IllegalStateException("receive-wait-time-seconds는 0 이상 20 이하여야 합니다.");
         }
         if (publishMaxAttemptCount <= 0) {
             throw new IllegalStateException("publish-max-attempt-count는 1 이상이어야 합니다.");

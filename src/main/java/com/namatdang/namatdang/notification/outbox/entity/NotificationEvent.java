@@ -118,6 +118,34 @@ public class NotificationEvent {
         return event;
     }
 
+    public static NotificationEvent reservationConfirmed(
+            Long reservationId,
+            Long storeId,
+            LocalDateTime reservationCreatedAt
+    ) {
+        return reservationEvent(
+                reservationId,
+                storeId,
+                NotificationEventType.RESERVATION_CONFIRMED,
+                "CONFIRMED",
+                reservationCreatedAt
+        );
+    }
+
+    public static NotificationEvent reservationCanceled(
+            Long reservationId,
+            Long storeId,
+            LocalDateTime reservationCanceledAt
+    ) {
+        return reservationEvent(
+                reservationId,
+                storeId,
+                NotificationEventType.RESERVATION_CANCELED,
+                "CANCELED",
+                reservationCanceledAt
+        );
+    }
+
     public void startPublishing(LocalDateTime startedAt) {
         if (status != NotificationEventStatus.PENDING
                 && status != NotificationEventStatus.PUBLISHING) {
@@ -192,5 +220,29 @@ public class NotificationEvent {
         if (value == null || value <= 0) {
             throw new IllegalArgumentException(fieldName + "는 양수여야 합니다.");
         }
+    }
+
+    private static NotificationEvent reservationEvent(
+            Long reservationId,
+            Long storeId,
+            NotificationEventType eventType,
+            String action,
+            LocalDateTime occurredAt
+    ) {
+        requirePositive(reservationId, "reservationId");
+        requirePositive(storeId, "storeId");
+        if (occurredAt == null) {
+            throw new IllegalArgumentException("occurredAt은 필수입니다.");
+        }
+
+        NotificationEvent event = new NotificationEvent();
+        event.reservationId = reservationId;
+        event.storeId = storeId;
+        event.eventType = eventType;
+        event.sourceRequestKey = "RESERVATION:%d:%s".formatted(reservationId, action);
+        event.status = NotificationEventStatus.PENDING;
+        event.retryCount = 0;
+        event.occurredAt = occurredAt;
+        return event;
     }
 }

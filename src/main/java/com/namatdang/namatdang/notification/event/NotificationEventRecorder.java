@@ -9,4 +9,16 @@ public interface NotificationEventRecorder {
             Long storeId,
             LocalDateTime dealCreatedAt
     );
+
+    void recordReservationConfirmed(
+            Long reservationId,
+            Long storeId,
+            LocalDateTime reservationCreatedAt
+    );
+
+    void recordReservationCanceled(
+            Long reservationId,
+            Long storeId,
+            LocalDateTime reservationCanceledAt
+    );
 }
