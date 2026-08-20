@@ -37,11 +37,104 @@ class StoreApiTests extends IntegrationTestSupport {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
+    @Autowired
+    private com.namatdang.namatdang.deal.repository.DealRepository dealRepository;
+
+    @Test
+    void getStoresOnMapWithinBounds() throws Exception {
+        User owner = saveOwner();
+        String keyword = uniqueKeyword();
+
+        // 1. 영역 안 매장
+        Store inBoundStore = saveStoreWithLocation(owner, "영역안 매장 " + keyword, "주소 1",
+                new BigDecimal("37.5665"), new BigDecimal("126.9780"));
+
+        // 2. 영역 밖 매장 (위도 벗어남)
+        saveStoreWithLocation(owner, "영역밖 매장1 " + keyword, "주소 2",
+                new BigDecimal("35.1796"), new BigDecimal("126.9780"));
+
+        // 3. 영역 밖 매장 (경도 벗어남)
+        saveStoreWithLocation(owner, "영역밖 매장2 " + keyword, "주소 3",
+                new BigDecimal("37.5665"), new BigDecimal("129.0756"));
+
+        mockMvc.perform(get("/api/v1/stores/map")
+                        .header("Authorization", consumerToken())
+                        .param("minLat", "37.5000")
+                        .param("maxLat", "37.6000")
+                        .param("minLng", "126.9000")
+                        .param("maxLng", "127.0000")
+                        .param("keyword", keyword))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(inBoundStore.getId()))
+                .andExpect(jsonPath("$[0].name").value("영역안 매장 " + keyword))
+                .andExpect(jsonPath("$[0].hasActiveDeal").value(false))
+                .andExpect(jsonPath("$[0].activeDealCount").value(0));
+    }
+
+    @Test
+    void getStoresOnMapWithDiscountFilter() throws Exception {
+        User owner = saveOwner();
+        String keyword = uniqueKeyword();
+
+        // 1. 할인 딜이 있는 매장
+        Store discountingStore = saveStoreWithLocation(owner, "할인매장 " + keyword, "주소 1",
+                new BigDecimal("37.5665"), new BigDecimal("126.9780"));
+        com.namatdang.namatdang.deal.entity.Deal activeDeal = new com.namatdang.namatdang.deal.entity.Deal(
+                discountingStore,
+                java.time.LocalDateTime.now().plusHours(2),
+                "마감 임박 빵 세일");
+        dealRepository.saveAndFlush(activeDeal);
+
+        // 2. 할인 딜이 없는 매장
+        saveStoreWithLocation(owner, "일반매장 " + keyword, "주소 2",
+                new BigDecimal("37.5665"), new BigDecimal("126.9790"));
+
+        // 3. 마감된 딜만 있는 매장
+        Store closedDealStore = saveStoreWithLocation(owner, "마감매장 " + keyword, "주소 3",
+                new BigDecimal("37.5665"), new BigDecimal("126.9770"));
+        com.namatdang.namatdang.deal.entity.Deal closedDeal = new com.namatdang.namatdang.deal.entity.Deal(
+                closedDealStore,
+                java.time.LocalDateTime.now().minusHours(1),
+                "이미 종료된 세일");
+        dealRepository.saveAndFlush(closedDeal);
+
+        // onlyDiscounting=true 로 조회
+        mockMvc.perform(get("/api/v1/stores/map")
+                        .header("Authorization", consumerToken())
+                        .param("minLat", "37.5000")
+                        .param("maxLat", "37.6000")
+                        .param("minLng", "126.9000")
+                        .param("maxLng", "127.0000")
+                        .param("onlyDiscounting", "true")
+                        .param("keyword", keyword))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(discountingStore.getId()))
+                .andExpect(jsonPath("$[0].name").value("할인매장 " + keyword))
+                .andExpect(jsonPath("$[0].hasActiveDeal").value(true))
+                .andExpect(jsonPath("$[0].activeDealCount").value(1));
+    }
+
+    @Test
+    void getStoresOnMapInvalidBoundsReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/stores/map")
+                        .header("Authorization", consumerToken())
+                        .param("minLat", "37.6000")
+                        .param("maxLat", "37.5000") // minLat > maxLat
+                        .param("minLng", "126.9000")
+                        .param("maxLng", "127.0000"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+    }
+
     @Test
     void getStoresWithoutKeyword() throws Exception {
+
         long existingStoreCount = storeRepository.count();
         User owner = saveOwner();
         saveStore(owner, "매장 목록 " + uniqueKeyword(), "대구광역시 북구 침산로 1");
+
 
         mockMvc.perform(get("/api/v1/stores")
                         .header("Authorization", consumerToken())
@@ -201,14 +294,18 @@ class StoreApiTests extends IntegrationTestSupport {
     }
 
     private Store saveStore(User owner, String name, String address) {
+        return saveStoreWithLocation(owner, name, address, new BigDecimal("35.8714354"), new BigDecimal("128.6014450"));
+    }
+
+    private Store saveStoreWithLocation(User owner, String name, String address, BigDecimal lat, BigDecimal lon) {
         Store store = new Store(owner,
                                 name,
                                 address,
                                 "1층",
                                 "053-123-4567",
                                 "매장 설명",
-                                new BigDecimal("35.8714354"),
-                                new BigDecimal("128.6014450"));
+                                lat,
+                                lon);
         return storeRepository.saveAndFlush(store);
     }
 
@@ -216,3 +313,4 @@ class StoreApiTests extends IntegrationTestSupport {
         return UUID.randomUUID().toString().replace("-", "");
     }
 }
+
