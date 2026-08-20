@@ -48,39 +48,327 @@ class DealApiTests extends IntegrationTestSupport {
 
     @Test
     void consumerGetsSellingDeals() throws Exception {
-        long existingDealCount = dealRepository.count();
         User owner = saveUser(UserRole.OWNER);
         User consumer = saveUser(UserRole.CONSUMER);
         Store store = saveStore(owner);
         LocalDateTime salesEndsAt = hoursLater(3);
-        Deal deal = saveDeal(store, salesEndsAt, 5);
+        String keyword = "목록조회" + uniqueValue();
+        Deal deal = saveDeal(store,
+                             salesEndsAt,
+                             keyword,
+                             new DealItem("소금빵", 5, 4000, 2000));
 
         mockMvc.perform(get("/api/v1/deals")
                         .header("Authorization", bearerToken(consumer))
+                        .param("keyword", keyword)
                         .param("page", "0")
                         .param("size", "100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(existingDealCount + 1))
+                .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content[0].dealId").value(deal.getId()))
                 .andExpect(jsonPath("$.content[0].salesEndsAt").value(format(salesEndsAt)))
                 .andExpect(jsonPath("$.content[0].storeName").value(store.getName()))
-                .andExpect(jsonPath("$.content[0].lowestSalePrice").value(2000));
+                .andExpect(jsonPath("$.content[0].lowestSalePrice").value(2000))
+                .andExpect(jsonPath("$.content[0].distanceMeters").doesNotExist())
+                .andExpect(jsonPath("$.content[0].headlineItemName").value("소금빵"))
+                .andExpect(jsonPath("$.content[0].totalRemainingQuantity").value(5))
+                .andExpect(jsonPath("$.content[0].maxDiscountRate").value(50));
+    }
+
+    @Test
+    void keywordSearchesDescriptionStoreAndItemsWithoutDuplicatePagination() throws Exception {
+        User owner = saveUser(UserRole.OWNER);
+        User consumer = saveUser(UserRole.CONSUMER);
+        String keyword = "키워드" + uniqueValue();
+
+        Deal descriptionDeal = saveDeal(
+                saveStore(owner, "설명 검색 가게", "대구광역시 중구 1", BigDecimal.ZERO, BigDecimal.ZERO),
+                hoursLater(3),
+                keyword + " 설명",
+                new DealItem("크루아상", 2, 4000, 3000));
+        Deal storeNameDeal = saveDeal(
+                saveStore(owner, keyword + " 가게", "대구광역시 중구 2", BigDecimal.ZERO, BigDecimal.ZERO),
+                hoursLater(3),
+                "평범한 설명",
+                new DealItem("식빵", 2, 4000, 3000));
+        Deal storeAddressDeal = saveDeal(
+                saveStore(owner, "주소 검색 가게", "대구광역시 " + keyword, BigDecimal.ZERO, BigDecimal.ZERO),
+                hoursLater(3),
+                "평범한 설명",
+                new DealItem("바게트", 2, 4000, 3000));
+        Deal itemNameDeal = saveDeal(
+                saveStore(owner, "품목 검색 가게", "대구광역시 중구 4", BigDecimal.ZERO, BigDecimal.ZERO),
+                hoursLater(3),
+                "평범한 설명",
+                new DealItem(keyword + " 소금빵", 3, 4000, 2000),
+                new DealItem(keyword + " 크로플", 4, 5000, 2500));
+        saveDeal(
+                saveStore(owner, "검색에 안 나오는 가게", "대구광역시 중구 5", BigDecimal.ZERO, BigDecimal.ZERO),
+                hoursLater(3),
+                "다른 설명",
+                new DealItem("파이", 1, 4000, 3000));
+
+        mockMvc.perform(get("/api/v1/deals")
+                        .header("Authorization", bearerToken(consumer))
+                        .param("keyword", keyword)
+                        .param("page", "0")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.totalElements").value(4))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.content[0].dealId").value(itemNameDeal.getId()))
+                .andExpect(jsonPath("$.content[0].headlineItemName").value(keyword + " 소금빵"))
+                .andExpect(jsonPath("$.content[0].totalRemainingQuantity").value(7))
+                .andExpect(jsonPath("$.content[0].maxDiscountRate").value(50))
+                .andExpect(jsonPath("$.content[1].dealId").value(storeAddressDeal.getId()));
+
+        mockMvc.perform(get("/api/v1/deals")
+                        .header("Authorization", bearerToken(consumer))
+                        .param("keyword", keyword)
+                        .param("page", "1")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.totalElements").value(4))
+                .andExpect(jsonPath("$.content[0].dealId").value(storeNameDeal.getId()))
+                .andExpect(jsonPath("$.content[1].dealId").value(descriptionDeal.getId()));
+    }
+
+    @Test
+    void locationSearchUsesDefaultFiveKilometerRadiusAndDistanceOrder() throws Exception {
+        User owner = saveUser(UserRole.OWNER);
+        User consumer = saveUser(UserRole.CONSUMER);
+
+        Deal nearestDeal = saveDeal(
+                saveStore(owner, "0km 가게", "적도 근처 1", BigDecimal.ZERO, BigDecimal.ZERO),
+                hoursLater(3),
+                "가까운 딜",
+                new DealItem("소금빵", 5, 4000, 2000));
+        Deal secondDeal = saveDeal(
+                saveStore(owner, "1km 가게", "적도 근처 2", new BigDecimal("0.0100000"), BigDecimal.ZERO),
+                hoursLater(3),
+                "두 번째 딜",
+                new DealItem("식빵", 3, 4000, 3000));
+        Deal outsideDeal = saveDeal(
+                saveStore(owner, "10km 가게", "적도 근처 3", new BigDecimal("0.1000000"), BigDecimal.ZERO),
+                hoursLater(3),
+                "반경 밖 딜",
+                new DealItem("크루아상", 2, 4000, 3000));
+
+        mockMvc.perform(get("/api/v1/deals")
+                        .header("Authorization", bearerToken(consumer))
+                        .param("centerLat", "0")
+                        .param("centerLng", "0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.content[0].dealId").value(nearestDeal.getId()))
+                .andExpect(jsonPath("$.content[0].distanceMeters").value(0))
+                .andExpect(jsonPath("$.content[1].dealId").value(secondDeal.getId()))
+                .andExpect(jsonPath("$.content[1].distanceMeters").isNumber())
+                .andExpect(jsonPath("$.content[?(@.dealId == " + outsideDeal.getId() + ")]").isEmpty());
+    }
+
+    @Test
+    void locationAndKeywordFiltersAreAppliedTogether() throws Exception {
+        User owner = saveUser(UserRole.OWNER);
+        User consumer = saveUser(UserRole.CONSUMER);
+        String keyword = "반경검색" + uniqueValue();
+
+        Deal matchingDeal = saveDeal(
+                saveStore(owner, "가까운 매장", "반경 검색 1", new BigDecimal("20.0010000"), new BigDecimal("20.0010000")),
+                hoursLater(3),
+                "평범한 설명",
+                new DealItem(keyword + " 스콘", 2, 5000, 2500));
+        saveDeal(
+                saveStore(owner, "더 가까운 다른 매장", "반경 검색 2", new BigDecimal("20.0001000"), new BigDecimal("20.0001000")),
+                hoursLater(3),
+                "평범한 설명",
+                new DealItem("타르트", 2, 5000, 3000));
+        saveDeal(
+                saveStore(owner, "먼 매장", "반경 검색 3", new BigDecimal("20.1000000"), new BigDecimal("20.1000000")),
+                hoursLater(3),
+                keyword + " 설명",
+                new DealItem("빵", 2, 5000, 3000));
+
+        mockMvc.perform(get("/api/v1/deals")
+                        .header("Authorization", bearerToken(consumer))
+                        .param("centerLat", "20")
+                        .param("centerLng", "20")
+                        .param("radiusMeters", "2000")
+                        .param("keyword", keyword))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].dealId").value(matchingDeal.getId()))
+                .andExpect(jsonPath("$.content[0].distanceMeters").isNumber());
+    }
+
+    @Test
+    void publicSellingListsExcludeSoldOutDealsAndSummarizeAvailableItems() throws Exception {
+        User owner = saveUser(UserRole.OWNER);
+        User consumer = saveUser(UserRole.CONSUMER);
+        String keyword = "재고계약" + uniqueValue();
+        String soldOutItemKeyword = "품절품목검색" + uniqueValue();
+        Store store = saveStore(owner,
+                                "재고 테스트 가게",
+                                "적도 근처",
+                                BigDecimal.ZERO,
+                                BigDecimal.ZERO);
+
+        DealItem soldOutSummaryItem = new DealItem(soldOutItemKeyword, 4, 10000, 500);
+        Deal availableDeal = saveDeal(store,
+                                      hoursLater(3),
+                                      keyword + " 일부 판매 중",
+                                      soldOutSummaryItem,
+                                      new DealItem("판매 가능 소금빵", 3, 5000, 3000));
+        soldOutSummaryItem.decrease(4);
+
+        DealItem fullySoldOutItem = new DealItem("모두 품절된 빵", 2, 4000, 1000);
+        Deal fullySoldOutDeal = saveDeal(store,
+                                         hoursLater(3),
+                                         keyword + " 모두 품절",
+                                         fullySoldOutItem);
+        fullySoldOutItem.decrease(2);
+        dealRepository.flush();
+
+        String token = bearerToken(consumer);
+
+        mockMvc.perform(get("/api/v1/deals")
+                        .header("Authorization", token)
+                        .param("page", "0")
+                        .param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.dealId == " + availableDeal.getId() + ")]").isNotEmpty())
+                .andExpect(jsonPath("$.content[?(@.dealId == " + fullySoldOutDeal.getId() + ")]").isEmpty());
+
+        mockMvc.perform(get("/api/v1/deals")
+                        .header("Authorization", token)
+                        .param("keyword", keyword))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].dealId").value(availableDeal.getId()))
+                .andExpect(jsonPath("$.content[0].itemCount").value(1))
+                .andExpect(jsonPath("$.content[0].headlineItemName").value("판매 가능 소금빵"))
+                .andExpect(jsonPath("$.content[0].lowestSalePrice").value(3000))
+                .andExpect(jsonPath("$.content[0].totalRemainingQuantity").value(3))
+                .andExpect(jsonPath("$.content[0].maxDiscountRate").value(40));
+
+        mockMvc.perform(get("/api/v1/deals")
+                        .header("Authorization", token)
+                        .param("centerLat", "0")
+                        .param("centerLng", "0")
+                        .param("keyword", keyword))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].dealId").value(availableDeal.getId()))
+                .andExpect(jsonPath("$.content[0].itemCount").value(1))
+                .andExpect(jsonPath("$.content[0].headlineItemName").value("판매 가능 소금빵"))
+                .andExpect(jsonPath("$.content[0].lowestSalePrice").value(3000))
+                .andExpect(jsonPath("$.content[0].totalRemainingQuantity").value(3))
+                .andExpect(jsonPath("$.content[0].maxDiscountRate").value(40));
+
+        mockMvc.perform(get("/api/v1/stores/{storeId}/deals", store.getId())
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].dealId").value(availableDeal.getId()))
+                .andExpect(jsonPath("$.content[0].itemCount").value(1))
+                .andExpect(jsonPath("$.content[0].headlineItemName").value("판매 가능 소금빵"))
+                .andExpect(jsonPath("$.content[0].lowestSalePrice").value(3000))
+                .andExpect(jsonPath("$.content[0].totalRemainingQuantity").value(3))
+                .andExpect(jsonPath("$.content[0].maxDiscountRate").value(40));
+
+        mockMvc.perform(get("/api/v1/deals/{dealId}", availableDeal.getId())
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(2))
+                .andExpect(jsonPath("$.items[0].name").value(soldOutItemKeyword))
+                .andExpect(jsonPath("$.items[0].remainingQuantity").value(0))
+                .andExpect(jsonPath("$.items[0].status").value("SOLD_OUT"))
+                .andExpect(jsonPath("$.items[1].name").value("판매 가능 소금빵"));
+
+        mockMvc.perform(get("/api/v1/deals")
+                        .header("Authorization", token)
+                        .param("keyword", soldOutItemKeyword))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+
+        mockMvc.perform(get("/api/v1/deals")
+                        .header("Authorization", token)
+                        .param("centerLat", "0")
+                        .param("centerLng", "0")
+                        .param("keyword", soldOutItemKeyword))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+
+        mockMvc.perform(get("/api/v1/owner/stores/{storeId}/deals", store.getId())
+                        .header("Authorization", bearerToken(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.content[1].dealId").value(availableDeal.getId()))
+                .andExpect(jsonPath("$.content[1].itemCount").value(2));
+    }
+
+    @Test
+    void locationSearchRejectsIncompleteCoordinatesAndInvalidRange() throws Exception {
+        User consumer = saveUser(UserRole.CONSUMER);
+        String token = bearerToken(consumer);
+
+        mockMvc.perform(get("/api/v1/deals")
+                        .header("Authorization", token)
+                        .param("centerLat", "35.8"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        mockMvc.perform(get("/api/v1/deals")
+                        .header("Authorization", token)
+                        .param("centerLat", "35.8")
+                        .param("centerLng", "128.6")
+                        .param("radiusMeters", "99"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        mockMvc.perform(get("/api/v1/deals")
+                        .header("Authorization", token)
+                        .param("centerLat", "91")
+                        .param("centerLng", "128.6"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        mockMvc.perform(get("/api/v1/deals")
+                        .header("Authorization", token)
+                        .param("centerLat", "35.8")
+                        .param("centerLng", "128.6")
+                        .param("radiusMeters", "50001"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        mockMvc.perform(get("/api/v1/deals")
+                        .header("Authorization", token)
+                        .param("centerLat", "not-a-number")
+                        .param("centerLng", "128.6"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
     }
 
     @Test
     void dealPastSalesEndsAtIsNotListed() throws Exception {
-        long existingDealCount = dealRepository.count();
         User owner = saveUser(UserRole.OWNER);
         User consumer = saveUser(UserRole.CONSUMER);
         Store store = saveStore(owner);
-        saveDeal(store, LocalDateTime.now().minusMinutes(1), 5);
+        String keyword = "마감조회" + uniqueValue();
+        saveDeal(store,
+                 LocalDateTime.now().minusMinutes(1),
+                 keyword,
+                 new DealItem("소금빵", 5, 4000, 2000));
 
         mockMvc.perform(get("/api/v1/deals")
                         .header("Authorization", bearerToken(consumer))
+                        .param("keyword", keyword)
                         .param("page", "0")
                         .param("size", "100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(existingDealCount));
+                .andExpect(jsonPath("$.totalElements").value(0));
     }
 
     @Test
@@ -215,20 +503,39 @@ class DealApiTests extends IntegrationTestSupport {
     }
 
     private Store saveStore(User owner) {
+        return saveStore(owner,
+                         "남았당 베이커리 " + uniqueValue(),
+                         "대구광역시 중구 국채보상로 1",
+                         new BigDecimal("35.8714354"),
+                         new BigDecimal("128.6014450"));
+    }
+
+    private Store saveStore(User owner, String name, String address,
+                            BigDecimal latitude, BigDecimal longitude) {
         Store store = new Store(owner,
-                                "남았당 베이커리 " + uniqueValue(),
-                                "대구광역시 중구 국채보상로 1",
+                                name,
+                                address,
                                 "1층",
                                 "053-123-4567",
                                 "매장 설명",
-                                new BigDecimal("35.8714354"),
-                                new BigDecimal("128.6014450"));
+                                latitude,
+                                longitude);
         return storeRepository.saveAndFlush(store);
     }
 
     private Deal saveDeal(Store store, LocalDateTime salesEndsAt, int quantity) {
-        Deal deal = new Deal(store, salesEndsAt, "마감 임박 상품입니다.");
-        deal.addItem(new DealItem("소금빵", quantity, 4000, 2000));
+        return saveDeal(store,
+                        salesEndsAt,
+                        "마감 임박 상품입니다.",
+                        new DealItem("소금빵", quantity, 4000, 2000));
+    }
+
+    private Deal saveDeal(Store store, LocalDateTime salesEndsAt, String description,
+                          DealItem... items) {
+        Deal deal = new Deal(store, salesEndsAt, description);
+        for (DealItem item : items) {
+            deal.addItem(item);
+        }
         return dealRepository.saveAndFlush(deal);
     }
 

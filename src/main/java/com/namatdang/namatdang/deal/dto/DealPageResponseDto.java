@@ -23,12 +23,24 @@ public class DealPageResponseDto {
                 .map(DealResponseDto::from)
                 .toList();
 
+        return from(deals, content);
+    }
+
+    public static DealPageResponseDto fromSelling(Page<Deal> deals) {
+        List<DealResponseDto> content = deals.getContent().stream()
+                .map(DealResponseDto::fromSelling)
+                .toList();
+
+        return from(deals, content);
+    }
+
+    public static DealPageResponseDto from(Page<?> page, List<DealResponseDto> content) {
         return new DealPageResponseDto(content,
-                                       deals.getNumber(),
-                                       deals.getSize(),
-                                       deals.getTotalElements(),
-                                       deals.getTotalPages(),
-                                       deals.isFirst(),
-                                       deals.isLast());
+                                       page.getNumber(),
+                                       page.getSize(),
+                                       page.getTotalElements(),
+                                       page.getTotalPages(),
+                                       page.isFirst(),
+                                       page.isLast());
     }
 }
