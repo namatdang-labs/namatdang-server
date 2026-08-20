@@ -2,14 +2,12 @@ package com.namatdang.namatdang.security;
 
 import com.namatdang.namatdang.exception.ExceptionCode;
 import com.namatdang.namatdang.user.entity.User;
-import com.namatdang.namatdang.user.entity.UserRole;
 import com.namatdang.namatdang.user.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -47,14 +45,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             try {
                 authenticate(jwtDecoder.decode(authorization.substring(BEARER_PREFIX.length())));
-                request.setAttribute("userId", currentUser().getUserId());
             } catch (JwtException | IllegalArgumentException exception) {
                 SecurityContextHolder.clearContext();
                 errorWriter.write(response, ExceptionCode.INVALID_TOKEN);
                 return;
             }
-        } else {
-            authenticateLegacyRequestAttribute(request);
         }
 
         filterChain.doFilter(request, response);
@@ -62,31 +57,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private void authenticate(Jwt jwt) {
         Long userId = Long.valueOf(jwt.getSubject());
-        UserRole role = userRepository.findById(userId)
-                .map(User::getRole)
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BadJwtException("탈퇴했거나 존재하지 않는 회원의 토큰입니다."));
-        setAuthentication(new AuthUser(userId, role));
-    }
-
-    private void authenticateLegacyRequestAttribute(HttpServletRequest request) {
-        Object userIdAttribute = request.getAttribute("userId");
-        if (!(userIdAttribute instanceof Long userId)) {
-            return;
-        }
-
-        userRepository.findById(userId)
-                .map(User::getRole)
-                .map(role -> new AuthUser(userId, role))
-                .ifPresent(this::setAuthentication);
+        setAuthentication(new AuthUser(userId, user.getRoles()));
     }
 
     private void setAuthentication(AuthUser authUser) {
-        var authority = new SimpleGrantedAuthority("ROLE_" + authUser.getRole().name());
-        var authentication = new UsernamePasswordAuthenticationToken(authUser, null, List.of(authority));
+        var authorities = authUser.getRoles().stream()
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
+                .toList();
+        var authentication = new UsernamePasswordAuthenticationToken(authUser, null, authorities);
         SecurityContextHolder.getContext().setAuthentication(authentication);
-    }
-
-    private AuthUser currentUser() {
-        return (AuthUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 }

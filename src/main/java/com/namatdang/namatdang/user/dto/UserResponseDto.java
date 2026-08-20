@@ -3,6 +3,7 @@ package com.namatdang.namatdang.user.dto;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.entity.UserRole;
 import java.time.LocalDateTime;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -14,7 +15,7 @@ public class UserResponseDto {
     private String email;
     private String name;
     private String phoneNumber;
-    private UserRole role;
+    private List<UserRole> roles;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -23,7 +24,7 @@ public class UserResponseDto {
                                    user.getEmail(),
                                    user.getName(),
                                    user.getPhoneNumber(),
-                                   user.getRole(),
+                                   user.getRoles().stream().toList(),
                                    user.getCreatedAt(),
                                    user.getUpdatedAt());
     }

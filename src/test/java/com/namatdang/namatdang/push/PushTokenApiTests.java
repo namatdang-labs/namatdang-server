@@ -11,6 +11,7 @@ import com.namatdang.namatdang.push.entity.FcmRegistration;
 import com.namatdang.namatdang.push.entity.PushDeviceType;
 import com.namatdang.namatdang.push.repository.FcmRegistrationRepository;
 import com.namatdang.namatdang.push.service.PushTokenService;
+import com.namatdang.namatdang.security.JwtTokenProvider;
 import com.namatdang.namatdang.support.IntegrationTestSupport;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.entity.UserRole;
@@ -54,13 +55,16 @@ class PushTokenApiTests extends IntegrationTestSupport {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
     @Test
     void registerIosPushToken() throws Exception {
         User user = saveUser("register");
         String registrationToken = uniqueToken("register");
 
         mockMvc.perform(put("/api/v1/push-tokens")
-                        .requestAttr("userId", user.getId())
+                        .header("Authorization", bearerToken(user))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody(registrationToken, "IOS", "SAFARI")))
                 .andExpect(status().isOk())
@@ -100,14 +104,14 @@ class PushTokenApiTests extends IntegrationTestSupport {
         FcmRegistration registration = findByToken(registrationToken);
 
         mockMvc.perform(delete("/api/v1/push-tokens/{pushTokenId}", registration.getId())
-                        .requestAttr("userId", user.getId()))
+                        .header("Authorization", bearerToken(user)))
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
         assertThat(fcmRegistrationRepository.findByRegistrationToken(registrationToken)).isEmpty();
 
         mockMvc.perform(delete("/api/v1/push-tokens/{pushTokenId}", registration.getId())
-                        .requestAttr("userId", user.getId()))
+                        .header("Authorization", bearerToken(user)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("PUSH_TOKEN_NOT_FOUND"));
 
@@ -146,7 +150,7 @@ class PushTokenApiTests extends IntegrationTestSupport {
         FcmRegistration registration = findByToken(registrationToken);
 
         mockMvc.perform(delete("/api/v1/push-tokens/{pushTokenId}", registration.getId())
-                        .requestAttr("userId", otherUser.getId()))
+                        .header("Authorization", bearerToken(otherUser)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("PUSH_TOKEN_NOT_FOUND"));
 
@@ -205,14 +209,14 @@ class PushTokenApiTests extends IntegrationTestSupport {
         User user = saveUser("invalid-request");
 
         mockMvc.perform(put("/api/v1/push-tokens")
-                        .requestAttr("userId", user.getId())
+                        .header("Authorization", bearerToken(user))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody(" ", "DESKTOP", "SAFARI")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 
         mockMvc.perform(put("/api/v1/push-tokens")
-                        .requestAttr("userId", user.getId())
+                        .header("Authorization", bearerToken(user))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody(uniqueToken("invalid-device"), "MOBILE", "SAFARI")))
                 .andExpect(status().isBadRequest())
@@ -230,7 +234,7 @@ class PushTokenApiTests extends IntegrationTestSupport {
             String browser
     ) throws Exception {
         mockMvc.perform(put("/api/v1/push-tokens")
-                        .requestAttr("userId", user.getId())
+                        .header("Authorization", bearerToken(user))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody(registrationToken, deviceType, browser)))
                 .andExpect(status().isOk());
@@ -263,5 +267,9 @@ class PushTokenApiTests extends IntegrationTestSupport {
                 UserRole.CONSUMER
         );
         return userRepository.saveAndFlush(user);
+    }
+
+    private String bearerToken(User user) {
+        return "Bearer " + jwtTokenProvider.issue(user.getId());
     }
 }

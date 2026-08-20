@@ -188,7 +188,7 @@ class StoreApiTests extends IntegrationTestSupport {
                                  "010-1234-5678",
                                  UserRole.CONSUMER);
         userRepository.saveAndFlush(consumer);
-        return "Bearer " + jwtTokenProvider.issue(consumer.getId(), consumer.getRole());
+        return "Bearer " + jwtTokenProvider.issue(consumer.getId());
     }
 
     private User saveOwner() {

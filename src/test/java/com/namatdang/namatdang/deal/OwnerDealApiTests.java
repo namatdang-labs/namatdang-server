@@ -246,7 +246,7 @@ class OwnerDealApiTests extends IntegrationTestSupport {
     }
 
     private String bearerToken(User user) {
-        return "Bearer " + jwtTokenProvider.issue(user.getId(), user.getRole());
+        return "Bearer " + jwtTokenProvider.issue(user.getId());
     }
 
     private User saveUser(UserRole role) {

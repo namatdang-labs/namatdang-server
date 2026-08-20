@@ -291,7 +291,7 @@ class ReservationApiTests extends ReservationTestSupport {
     }
 
     @Test
-    void ownerCannotCreateReservation() throws Exception {
+    void ownerRetainsConsumerReservationPermission() throws Exception {
         User owner = saveUser(UserRole.OWNER);
         Store store = saveStore(owner);
         Deal deal = saveDeal(store, 5, 3);
@@ -301,8 +301,8 @@ class ReservationApiTests extends ReservationTestSupport {
                         .header("Idempotency-Key", uniqueValue())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(reservationBody(deal.getId(), deal.getItems().get(0).getId(), 1)))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.reservationId").isNumber());
     }
 
     @Test

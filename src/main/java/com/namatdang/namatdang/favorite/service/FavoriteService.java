@@ -66,7 +66,7 @@ public class FavoriteService {
     }
 
     private void validateConsumerRole(User user) {
-        if (user.getRole() != UserRole.CONSUMER) {
+        if (!user.hasRole(UserRole.CONSUMER)) {
             throw new BusinessLogicException(ExceptionCode.FORBIDDEN);
         }
     }

@@ -31,7 +31,7 @@ public class AuthService {
             throw authenticationFailed();
         }
 
-        String accessToken = jwtTokenProvider.issue(user.getId(), user.getRole());
+        String accessToken = jwtTokenProvider.issue(user.getId());
         return LoginResponseDto.of(accessToken, jwtTokenProvider.expirationSeconds(), user);
     }
 

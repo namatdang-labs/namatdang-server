@@ -24,7 +24,8 @@ public class OwnerStoreService {
 
     @Transactional
     public StoreResponseDto createStore(Long userId, StoreCreateRequestDto requestDto) {
-        User owner = findOwnerById(userId);
+        User owner = findConsumerByIdForUpdate(userId);
+        owner.grantOwnerRole();
 
         Store store = requestDto.toEntity(owner);
         Store savedStore = storeRepository.save(store);
@@ -63,7 +64,18 @@ public class OwnerStoreService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessLogicException(ExceptionCode.USER_NOT_FOUND));
 
-        if (user.getRole() != UserRole.OWNER) {
+        if (!user.hasRole(UserRole.OWNER)) {
+            throw new BusinessLogicException(ExceptionCode.FORBIDDEN);
+        }
+
+        return user;
+    }
+
+    private User findConsumerByIdForUpdate(Long userId) {
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new BusinessLogicException(ExceptionCode.USER_NOT_FOUND));
+
+        if (!user.hasRole(UserRole.CONSUMER)) {
             throw new BusinessLogicException(ExceptionCode.FORBIDDEN);
         }
 
