@@ -4,6 +4,7 @@ import com.namatdang.namatdang.deal.entity.Deal;
 import com.namatdang.namatdang.deal.entity.DealStatus;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -46,4 +47,14 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select deal from Deal deal where deal.id = :dealId")
     Optional<Deal> findByIdForUpdate(@Param("dealId") Long dealId);
+
+    @Query("SELECT d.store.id, COUNT(d) FROM Deal d " +
+           "WHERE d.store.id IN :storeIds AND d.status = :status AND d.salesEndsAt > :now " +
+           "GROUP BY d.store.id")
+    List<Object[]> countActiveDealsByStoreIds(
+            @Param("storeIds") java.util.Collection<Long> storeIds,
+            @Param("status") DealStatus status,
+            @Param("now") LocalDateTime now
+    );
 }
+
