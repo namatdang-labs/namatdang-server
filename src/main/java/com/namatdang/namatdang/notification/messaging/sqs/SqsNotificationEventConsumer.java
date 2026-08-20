@@ -18,13 +18,15 @@ public class SqsNotificationEventConsumer {
     private final NotificationEventMessageHandler messageHandler;
     private final String queueUrl;
     private final int receiveBatchSize;
+    private final int receiveWaitTimeSeconds;
 
     public SqsNotificationEventConsumer(
             SqsClient sqsClient,
             ObjectMapper objectMapper,
             NotificationEventMessageHandler messageHandler,
             String queueUrl,
-            int receiveBatchSize
+            int receiveBatchSize,
+            int receiveWaitTimeSeconds
     ) {
         if (queueUrl == null || queueUrl.isBlank()) {
             throw new IllegalArgumentException("queueUrl은 필수입니다.");
@@ -32,18 +34,22 @@ public class SqsNotificationEventConsumer {
         if (receiveBatchSize <= 0 || receiveBatchSize > 10) {
             throw new IllegalArgumentException("receiveBatchSize는 1 이상 10 이하여야 합니다.");
         }
+        if (receiveWaitTimeSeconds < 0 || receiveWaitTimeSeconds > 20) {
+            throw new IllegalArgumentException("receiveWaitTimeSeconds는 0 이상 20 이하여야 합니다.");
+        }
         this.sqsClient = sqsClient;
         this.objectMapper = objectMapper;
         this.messageHandler = messageHandler;
         this.queueUrl = queueUrl;
         this.receiveBatchSize = receiveBatchSize;
+        this.receiveWaitTimeSeconds = receiveWaitTimeSeconds;
     }
 
     public int pollOnce() {
         List<Message> messages = sqsClient.receiveMessage(ReceiveMessageRequest.builder()
                         .queueUrl(queueUrl)
                         .maxNumberOfMessages(receiveBatchSize)
-                        .waitTimeSeconds(0)
+                        .waitTimeSeconds(receiveWaitTimeSeconds)
                         .build())
                 .messages();
         messages.forEach(this::handle);

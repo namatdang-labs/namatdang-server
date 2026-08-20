@@ -14,6 +14,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -29,6 +30,8 @@ import tools.jackson.databind.ObjectMapper;
 )
 @EnableConfigurationProperties(NotificationSqsProperties.class)
 public class NotificationSqsConfiguration {
+
+    static final String SQS_POLLING_TASK_SCHEDULER = "sqsPollingTaskScheduler";
 
     @Bean
     SqsClient notificationSqsClient(NotificationSqsProperties properties) {
@@ -70,6 +73,16 @@ public class NotificationSqsConfiguration {
             havingValue = "true"
     )
     static class ConsumerConfiguration {
+
+        @Bean(name = SQS_POLLING_TASK_SCHEDULER)
+        ThreadPoolTaskScheduler sqsPollingTaskScheduler() {
+            ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+            scheduler.setPoolSize(1);
+            scheduler.setThreadNamePrefix("sqs-notification-poller-");
+            scheduler.setWaitForTasksToCompleteOnShutdown(true);
+            scheduler.setAwaitTerminationSeconds(25);
+            return scheduler;
+        }
 
         @Bean
         DealCreatedNotificationHandler dealCreatedNotificationHandler(
@@ -128,7 +141,8 @@ public class NotificationSqsConfiguration {
                     objectMapper,
                     messageHandler,
                     properties.getQueueUrl(),
-                    properties.getReceiveBatchSize()
+                    properties.getReceiveBatchSize(),
+                    properties.getReceiveWaitTimeSeconds()
             );
         }
     }

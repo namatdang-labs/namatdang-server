@@ -68,7 +68,8 @@ class SqsLocalStackIntegrationTests extends IntegrationTestSupport {
                 objectMapper,
                 consumedMessage::set,
                 queueUrl,
-                10
+                10,
+                0
         );
 
         publisher.publish(dealCreatedMessage());

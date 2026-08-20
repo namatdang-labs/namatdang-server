@@ -51,6 +51,7 @@ notification:
       publish-max-attempt-count: ${NOTIFICATION_SQS_PUBLISH_MAX_ATTEMPTS:5}
       publisher-fixed-delay-ms: ${NOTIFICATION_SQS_PUBLISHER_DELAY_MS:1000}
       receive-batch-size: ${NOTIFICATION_SQS_RECEIVE_BATCH_SIZE:10}
+      receive-wait-time-seconds: ${NOTIFICATION_SQS_RECEIVE_WAIT_TIME_SECONDS:20}
       consumer-fixed-delay-ms: ${NOTIFICATION_SQS_CONSUMER_DELAY_MS:1000}
 
 security:
