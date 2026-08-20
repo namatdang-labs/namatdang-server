@@ -33,7 +33,7 @@ import org.hibernate.annotations.BatchSize;
 @Table(name = "deals", indexes = {
         @Index(name = "idx_deals_store_id", columnList = "store_id"),
         @Index(name = "idx_deals_store_id_status", columnList = "store_id, status"),
-        @Index(name = "idx_deals_pickup_deadline", columnList = "pickup_deadline")
+        @Index(name = "idx_deals_sales_ends_at", columnList = "sales_ends_at")
 })
 public class Deal {
 
@@ -45,8 +45,8 @@ public class Deal {
     @JoinColumn(name = "store_id", nullable = false)
     private Store store;
 
-    @Column(name = "pickup_deadline", nullable = false)
-    private LocalDateTime pickupDeadline;
+    @Column(name = "sales_ends_at", nullable = false)
+    private LocalDateTime salesEndsAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -70,9 +70,9 @@ public class Deal {
 
     private LocalDateTime canceledAt;
 
-    public Deal(Store store, LocalDateTime pickupDeadline, String description) {
+    public Deal(Store store, LocalDateTime salesEndsAt, String description) {
         this.store = store;
-        this.pickupDeadline = pickupDeadline;
+        this.salesEndsAt = salesEndsAt;
         this.description = description == null ? null : description.strip();
         this.status = DealStatus.SELLING;
     }
@@ -97,7 +97,7 @@ public class Deal {
      * 예약을 받을 수 있는 상태인지 판단한다. 자동 마감 배치가 없으므로 마감시각도 함께 확인한다.
      */
     public boolean isReservable(LocalDateTime now) {
-        return status == DealStatus.SELLING && pickupDeadline.isAfter(now);
+        return status == DealStatus.SELLING && salesEndsAt.isAfter(now);
     }
 
     /**
@@ -110,7 +110,7 @@ public class Deal {
     public DealStatus displayStatus(LocalDateTime now) {
         boolean beforeClosing = status == DealStatus.SELLING || status == DealStatus.ENDED;
 
-        if (beforeClosing && !pickupDeadline.isAfter(now)) {
+        if (beforeClosing && !salesEndsAt.isAfter(now)) {
             return DealStatus.CLOSED;
         }
 

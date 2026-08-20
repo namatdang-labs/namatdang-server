@@ -11,8 +11,8 @@ import lombok.Getter;
 @Getter
 public class DealCreateRequestDto {
 
-    @NotNull(message = "수령 마감시각은 필수 입력 값입니다.")
-    private LocalDateTime pickupDeadline;
+    @NotNull(message = "판매 마감시각은 필수 입력 값입니다.")
+    private LocalDateTime salesEndsAt;
 
     @Size(max = 500, message = "안내사항은 500자 이하로 입력해 주세요.")
     private String description;

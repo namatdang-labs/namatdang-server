@@ -9,7 +9,7 @@ public enum DealStatus {
     ENDED,
 
     /**
-     * 수령 마감시각이 지나 마감됨. 되돌아가지 않는다.
+     * 판매 마감시각이 지나 마감됨. 되돌아가지 않는다.
      * <p>
      * TODO: #27 - 이 값으로 전이시키는 코드가 아직 없다. 마감 여부는 조회 시점에
      * {@link Deal#displayStatus}가 파생시킬 뿐이고 DB의 status는 SELLING/ENDED로 남는다.

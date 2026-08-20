@@ -150,18 +150,18 @@ class NotificationDomainIntegrationTests extends IntegrationTestSupport {
     }
 
     private String dealRequestBody() {
-        String pickupDeadline = LocalDateTime.now()
+        String salesEndsAt = LocalDateTime.now()
                 .plusHours(3)
                 .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         return """
                 {
-                  "pickupDeadline":"%s",
+                  "salesEndsAt":"%s",
                   "description":"마감 임박 상품입니다.",
                   "items":[
                     {"name":"소금빵","totalQuantity":5,"originalPrice":4000,"salePrice":2000}
                   ]
                 }
-                """.formatted(pickupDeadline);
+                """.formatted(salesEndsAt);
     }
 
     private String uniqueValue() {
