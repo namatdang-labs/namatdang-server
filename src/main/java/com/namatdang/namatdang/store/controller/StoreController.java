@@ -33,6 +33,15 @@ public class StoreController {
         return ResponseEntity.ok(responseDto);
     }
 
+    @GetMapping("/map")
+    @Operation(summary = "지도 영역(Bounding Box) 기반 매장 검색 및 할인 필터링")
+    public ResponseEntity<java.util.List<com.namatdang.namatdang.store.dto.StoreMapResponseDto>> getStoresOnMap(
+            @jakarta.validation.Valid @org.springframework.web.bind.annotation.ModelAttribute com.namatdang.namatdang.store.dto.StoreMapRequestDto requestDto) {
+        java.util.List<com.namatdang.namatdang.store.dto.StoreMapResponseDto> responseDto = storeService.getStoresOnMap(requestDto);
+        return ResponseEntity.ok(responseDto);
+    }
+
+
     @GetMapping("/{storeId}")
     @Operation(summary = "매장 상세 조회")
     public ResponseEntity<StoreResponseDto> getStoreDetail(@PathVariable Long storeId) {

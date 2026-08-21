@@ -2,13 +2,20 @@ package com.namatdang.namatdang.deal.service;
 
 import com.namatdang.namatdang.deal.dto.DealDetailResponseDto;
 import com.namatdang.namatdang.deal.dto.DealPageResponseDto;
+import com.namatdang.namatdang.deal.dto.DealResponseDto;
+import com.namatdang.namatdang.deal.dto.DealSearchRequestDto;
 import com.namatdang.namatdang.deal.entity.Deal;
 import com.namatdang.namatdang.deal.entity.DealStatus;
 import com.namatdang.namatdang.deal.repository.DealRepository;
+import com.namatdang.namatdang.deal.repository.DealRepository.DealDistanceRow;
 import com.namatdang.namatdang.exception.BusinessLogicException;
 import com.namatdang.namatdang.exception.ExceptionCode;
 import com.namatdang.namatdang.store.repository.StoreRepository;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class DealService {
 
-    private static final int MAX_PAGE_SIZE = 100;
+    private static final int MAX_PAGE_SIZE = DealSearchRequestDto.MAX_PAGE_SIZE;
 
     private final DealRepository dealRepository;
     private final StoreRepository storeRepository;
@@ -33,15 +40,30 @@ public class DealService {
      * 만으로 조회한다.
      */
     @Transactional(readOnly = true)
+    public DealPageResponseDto getSellingDeals(DealSearchRequestDto requestDto) {
+        requestDto.validate();
+
+        LocalDateTime now = LocalDateTime.now();
+        String keyword = requestDto.normalizedKeyword();
+
+        if (requestDto.hasLocation()) {
+            return getSellingDealsWithinRadius(requestDto, keyword, now);
+        }
+
+        Pageable pageable = createPageable(requestDto.getPage(), requestDto.getSize());
+        Page<Deal> deals = keyword == null
+                ? dealRepository.findByStatusAndSalesEndsAtAfter(DealStatus.SELLING, now, pageable)
+                : dealRepository.findSellingDealsByKeyword(DealStatus.SELLING, now, keyword, pageable);
+
+        return DealPageResponseDto.fromSelling(deals);
+    }
+
+    @Transactional(readOnly = true)
     public DealPageResponseDto getSellingDeals(int page, int size) {
-        validatePageRequest(page, size);
-
-        Pageable pageable = createPageable(page, size);
-        Page<Deal> deals = dealRepository.findByStatusAndSalesEndsAtAfter(DealStatus.SELLING,
-                                                                          LocalDateTime.now(),
-                                                                          pageable);
-
-        return DealPageResponseDto.from(deals);
+        DealSearchRequestDto requestDto = new DealSearchRequestDto();
+        requestDto.setPage(page);
+        requestDto.setSize(size);
+        return getSellingDeals(requestDto);
     }
 
     @Transactional(readOnly = true)
@@ -55,7 +77,7 @@ public class DealService {
                                                                                    LocalDateTime.now(),
                                                                                    pageable);
 
-        return DealPageResponseDto.from(deals);
+        return DealPageResponseDto.fromSelling(deals);
     }
 
     @Transactional(readOnly = true)
@@ -64,6 +86,37 @@ public class DealService {
                 .orElseThrow(() -> new BusinessLogicException(ExceptionCode.DEAL_NOT_FOUND));
 
         return DealDetailResponseDto.from(deal);
+    }
+
+    private DealPageResponseDto getSellingDealsWithinRadius(DealSearchRequestDto requestDto,
+                                                             String keyword,
+                                                             LocalDateTime now) {
+        Pageable pageable = PageRequest.of(requestDto.getPage(), requestDto.getSize());
+        Page<DealDistanceRow> distancePage = dealRepository.findSellingDealIdsWithinRadius(
+                DealStatus.SELLING.name(),
+                now,
+                requestDto.getCenterLat(),
+                requestDto.getCenterLng(),
+                requestDto.getRadiusMeters(),
+                keyword,
+                pageable);
+
+        if (distancePage.isEmpty()) {
+            return DealPageResponseDto.from(distancePage, List.of());
+        }
+
+        List<Long> dealIds = distancePage.getContent().stream()
+                .map(DealDistanceRow::getDealId)
+                .toList();
+        Map<Long, Deal> dealsById = dealRepository.findAllWithStoreAndItemsByIdIn(dealIds).stream()
+                .collect(Collectors.toMap(Deal::getId, Function.identity()));
+
+        List<DealResponseDto> content = distancePage.getContent().stream()
+                .map(row -> DealResponseDto.fromSelling(dealsById.get(row.getDealId()),
+                                                        Math.round(row.getDistanceMeters())))
+                .toList();
+
+        return DealPageResponseDto.from(distancePage, content);
     }
 
     private Pageable createPageable(int page, int size) {
