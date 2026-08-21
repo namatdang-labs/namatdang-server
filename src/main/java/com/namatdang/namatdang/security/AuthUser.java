@@ -1,6 +1,7 @@
 package com.namatdang.namatdang.security;
 
 import com.namatdang.namatdang.user.entity.UserRole;
+import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -9,5 +10,5 @@ import lombok.Getter;
 public class AuthUser {
 
     private Long userId;
-    private UserRole role;
+    private Set<UserRole> roles;
 }

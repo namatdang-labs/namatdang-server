@@ -2,6 +2,7 @@ package com.namatdang.namatdang.auth.dto;
 
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.entity.UserRole;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -12,14 +13,14 @@ public class LoginUserResponseDto {
     private Long id;
     private String email;
     private String name;
-    private UserRole role;
+    private List<UserRole> roles;
 
     public static LoginUserResponseDto from(User user) {
         return new LoginUserResponseDto(
                 user.getId(),
                 user.getEmail(),
                 user.getName(),
-                user.getRole()
+                user.getRoles().stream().toList()
         );
     }
 }

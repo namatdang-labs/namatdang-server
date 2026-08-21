@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.namatdang.namatdang.favorite.entity.Favorite;
 import com.namatdang.namatdang.favorite.entity.FavoriteId;
 import com.namatdang.namatdang.favorite.repository.FavoriteRepository;
+import com.namatdang.namatdang.security.JwtTokenProvider;
 import com.namatdang.namatdang.store.entity.Store;
 import com.namatdang.namatdang.store.repository.StoreRepository;
 import com.namatdang.namatdang.user.entity.User;
@@ -45,6 +46,9 @@ class FavoriteApiTests {
 
     @Autowired
     private FavoriteRepository favoriteRepository;
+
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -105,7 +109,7 @@ class FavoriteApiTests {
         entityManager.clear();
 
         mockMvc.perform(get("/api/v1/favorites")
-                        .requestAttr("userId", consumer.getId()))
+                        .header("Authorization", bearerToken(consumer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(3))
                 .andExpect(jsonPath("$[0].id").value(lowerIdStore.getId()))
@@ -119,7 +123,7 @@ class FavoriteApiTests {
         User consumer = saveUser(UserRole.CONSUMER);
 
         mockMvc.perform(get("/api/v1/favorites")
-                        .requestAttr("userId", consumer.getId()))
+                        .header("Authorization", bearerToken(consumer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
     }
@@ -146,27 +150,21 @@ class FavoriteApiTests {
     }
 
     @Test
-    void ownerCannotUseFavorites() throws Exception {
+    void ownerRetainsConsumerFavoritePermission() throws Exception {
         User owner = saveUser(UserRole.OWNER);
         Store store = saveStore();
 
-        mockMvc.perform(get("/api/v1/favorites")
-                        .requestAttr("userId", owner.getId()))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
-
         mockMvc.perform(put("/api/v1/favorites/{storeId}", store.getId())
-                        .requestAttr("userId", owner.getId()))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+                        .header("Authorization", bearerToken(owner)))
+                .andExpect(status().isNoContent());
 
-        mockMvc.perform(delete("/api/v1/favorites/{storeId}", store.getId())
-                        .requestAttr("userId", owner.getId()))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        mockMvc.perform(get("/api/v1/favorites")
+                        .header("Authorization", bearerToken(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
 
         assertThat(favoriteRepository.findAllByUserIdInRegistrationOrder(owner.getId()))
-                .isEmpty();
+                .hasSize(1);
     }
 
     @Test
@@ -174,12 +172,12 @@ class FavoriteApiTests {
         User consumer = saveUser(UserRole.CONSUMER);
 
         mockMvc.perform(put("/api/v1/favorites/{storeId}", Long.MAX_VALUE)
-                        .requestAttr("userId", consumer.getId()))
+                        .header("Authorization", bearerToken(consumer)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("STORE_NOT_FOUND"));
 
         mockMvc.perform(delete("/api/v1/favorites/{storeId}", Long.MAX_VALUE)
-                        .requestAttr("userId", consumer.getId()))
+                        .header("Authorization", bearerToken(consumer)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("STORE_NOT_FOUND"));
     }
@@ -189,17 +187,17 @@ class FavoriteApiTests {
         Store store = saveStore();
 
         mockMvc.perform(get("/api/v1/favorites")
-                        .requestAttr("userId", Long.MAX_VALUE))
+                        .header("Authorization", bearerToken(Long.MAX_VALUE)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
 
         mockMvc.perform(put("/api/v1/favorites/{storeId}", store.getId())
-                        .requestAttr("userId", Long.MAX_VALUE))
+                        .header("Authorization", bearerToken(Long.MAX_VALUE)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
 
         mockMvc.perform(delete("/api/v1/favorites/{storeId}", store.getId())
-                        .requestAttr("userId", Long.MAX_VALUE))
+                        .header("Authorization", bearerToken(Long.MAX_VALUE)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
@@ -209,12 +207,12 @@ class FavoriteApiTests {
         User consumer = saveUser(UserRole.CONSUMER);
 
         mockMvc.perform(put("/api/v1/favorites/{storeId}", "not-a-number")
-                        .requestAttr("userId", consumer.getId()))
+                        .header("Authorization", bearerToken(consumer)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 
         mockMvc.perform(delete("/api/v1/favorites/{storeId}", "not-a-number")
-                        .requestAttr("userId", consumer.getId()))
+                        .header("Authorization", bearerToken(consumer)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
     }
@@ -226,7 +224,7 @@ class FavoriteApiTests {
         favoriteRepository.saveAndFlush(new Favorite(consumer, store));
 
         mockMvc.perform(delete("/api/v1/users/me")
-                        .requestAttr("userId", consumer.getId()))
+                        .header("Authorization", bearerToken(consumer)))
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
@@ -238,14 +236,14 @@ class FavoriteApiTests {
 
     private void addFavorite(User consumer, Store store) throws Exception {
         mockMvc.perform(put("/api/v1/favorites/{storeId}", store.getId())
-                        .requestAttr("userId", consumer.getId()))
+                        .header("Authorization", bearerToken(consumer)))
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
     }
 
     private void deleteFavorite(User consumer, Store store) throws Exception {
         mockMvc.perform(delete("/api/v1/favorites/{storeId}", store.getId())
-                        .requestAttr("userId", consumer.getId()))
+                        .header("Authorization", bearerToken(consumer)))
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
     }
@@ -285,5 +283,13 @@ class FavoriteApiTests {
 
     private String uniqueValue() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private String bearerToken(User user) {
+        return bearerToken(user.getId());
+    }
+
+    private String bearerToken(Long userId) {
+        return "Bearer " + jwtTokenProvider.issue(userId);
     }
 }

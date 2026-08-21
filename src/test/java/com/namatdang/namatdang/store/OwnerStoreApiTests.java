@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.namatdang.namatdang.security.JwtTokenProvider;
 import com.namatdang.namatdang.store.entity.Store;
 import com.namatdang.namatdang.store.repository.StoreRepository;
 import com.namatdang.namatdang.user.entity.User;
@@ -38,6 +39,9 @@ class OwnerStoreApiTests {
     @Autowired
     private StoreRepository storeRepository;
 
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -47,7 +51,7 @@ class OwnerStoreApiTests {
         String storeName = "새로운 베이커리 " + uniqueValue();
 
         mockMvc.perform(post("/api/v1/owner/stores")
-                        .requestAttr("userId", owner.getId())
+                        .header("Authorization", bearerToken(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -69,22 +73,31 @@ class OwnerStoreApiTests {
     }
 
     @Test
-    void consumerCannotCreateStore() throws Exception {
+    void consumerCreatesStoreAndGainsOwnerRoleWithExistingToken() throws Exception {
         User consumer = saveUser(UserRole.CONSUMER);
+        String token = bearerToken(consumer);
 
         mockMvc.perform(post("/api/v1/owner/stores")
-                        .requestAttr("userId", consumer.getId())
+                        .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "name": "권한 없는 매장",
+                                  "name": "승격 매장",
                                   "address": "대구광역시 중구 동성로 2"
                                 }
                                 """))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+                .andExpect(status().isCreated());
 
-        assertThat(storeRepository.findAllByOwnerIdOrderByIdAsc(consumer.getId())).isEmpty();
+        mockMvc.perform(get("/api/v1/owner/stores")
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+
+        mockMvc.perform(get("/api/v1/users/me")
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roles[0]").value("CONSUMER"))
+                .andExpect(jsonPath("$.roles[1]").value("OWNER"));
     }
 
     @Test
@@ -106,7 +119,7 @@ class OwnerStoreApiTests {
         saveStore(otherOwner, "다른 사장님 매장 " + uniqueValue());
 
         mockMvc.perform(get("/api/v1/owner/stores")
-                        .requestAttr("userId", owner.getId()))
+                        .header("Authorization", bearerToken(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].id").value(firstStore.getId()))
@@ -118,7 +131,7 @@ class OwnerStoreApiTests {
         User owner = saveUser(UserRole.OWNER);
 
         mockMvc.perform(get("/api/v1/owner/stores")
-                        .requestAttr("userId", owner.getId()))
+                        .header("Authorization", bearerToken(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
     }
@@ -130,7 +143,7 @@ class OwnerStoreApiTests {
         String updatedName = "수정 후 매장 " + uniqueValue();
 
         mockMvc.perform(patch("/api/v1/owner/stores/{storeId}", store.getId())
-                        .requestAttr("userId", owner.getId())
+                        .header("Authorization", bearerToken(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -153,7 +166,7 @@ class OwnerStoreApiTests {
         String originalName = otherStore.getName();
 
         mockMvc.perform(patch("/api/v1/owner/stores/{storeId}", otherStore.getId())
-                        .requestAttr("userId", owner.getId())
+                        .header("Authorization", bearerToken(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -177,12 +190,12 @@ class OwnerStoreApiTests {
         Store store = saveStore(owner, "소비자 접근 거절 " + uniqueValue());
 
         mockMvc.perform(get("/api/v1/owner/stores")
-                        .requestAttr("userId", consumer.getId()))
+                        .header("Authorization", bearerToken(consumer)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
 
         mockMvc.perform(patch("/api/v1/owner/stores/{storeId}", store.getId())
-                        .requestAttr("userId", consumer.getId())
+                        .header("Authorization", bearerToken(consumer))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -198,7 +211,7 @@ class OwnerStoreApiTests {
         User owner = saveUser(UserRole.OWNER);
 
         mockMvc.perform(patch("/api/v1/owner/stores/{storeId}", Long.MAX_VALUE)
-                        .requestAttr("userId", owner.getId())
+                        .header("Authorization", bearerToken(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -215,7 +228,7 @@ class OwnerStoreApiTests {
         Store store = saveStore(owner, "빈 수정 요청 " + uniqueValue());
 
         mockMvc.perform(patch("/api/v1/owner/stores/{storeId}", store.getId())
-                        .requestAttr("userId", owner.getId())
+                        .header("Authorization", bearerToken(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())
@@ -227,7 +240,7 @@ class OwnerStoreApiTests {
         User owner = saveUser(UserRole.OWNER);
 
         mockMvc.perform(post("/api/v1/owner/stores")
-                        .requestAttr("userId", owner.getId())
+                        .header("Authorization", bearerToken(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -243,7 +256,17 @@ class OwnerStoreApiTests {
     @Test
     void unknownUserCannotManageStores() throws Exception {
         mockMvc.perform(get("/api/v1/owner/stores")
-                        .requestAttr("userId", Long.MAX_VALUE))
+                        .header("Authorization", "Bearer " + jwtTokenProvider.issue(Long.MAX_VALUE)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
+    void requestAttributeDoesNotAuthenticateRequest() throws Exception {
+        User owner = saveUser(UserRole.OWNER);
+
+        mockMvc.perform(get("/api/v1/owner/stores")
+                        .requestAttr("userId", owner.getId()))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
@@ -271,7 +294,7 @@ class OwnerStoreApiTests {
 
     private void createStore(User owner, String name) throws Exception {
         mockMvc.perform(post("/api/v1/owner/stores")
-                        .requestAttr("userId", owner.getId())
+                        .header("Authorization", bearerToken(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -284,5 +307,9 @@ class OwnerStoreApiTests {
 
     private String uniqueValue() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private String bearerToken(User user) {
+        return "Bearer " + jwtTokenProvider.issue(user.getId());
     }
 }

@@ -410,6 +410,45 @@ class StoreApiTests extends IntegrationTestSupport {
     }
 
     @Test
+    void guestGetsStoresWithoutToken() throws Exception {
+        User owner = saveOwner();
+        String keyword = uniqueKeyword();
+        Store store = saveStore(owner, keyword + " 1호점", "대구광역시 중구 1");
+
+        mockMvc.perform(get("/api/v1/stores")
+                        .param("keyword", keyword)
+                        .param("page", "0")
+                        .param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(store.getId()));
+    }
+
+    @Test
+    void guestGetsStoreDetailWithoutToken() throws Exception {
+        User owner = saveOwner();
+        Store store = saveStore(owner,
+                                "남았당 베이커리 " + uniqueKeyword(),
+                                "대구광역시 중구 국채보상로 1");
+
+        mockMvc.perform(get("/api/v1/stores/{storeId}", store.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(store.getId()))
+                .andExpect(jsonPath("$.name").value(store.getName()));
+    }
+
+    @Test
+    void guestGetsStoreDealsWithoutToken() throws Exception {
+        User owner = saveOwner();
+        Store store = saveStore(owner,
+                                "남았당 베이커리 " + uniqueKeyword(),
+                                "대구광역시 중구 국채보상로 2");
+
+        mockMvc.perform(get("/api/v1/stores/{storeId}/deals", store.getId()))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void unknownStoreReturnsNotFound() throws Exception {
         mockMvc.perform(get("/api/v1/stores/{storeId}", Long.MAX_VALUE)
                         .header("Authorization", consumerToken()))
@@ -548,7 +587,7 @@ class StoreApiTests extends IntegrationTestSupport {
                                  "010-1234-5678",
                                  UserRole.CONSUMER);
         userRepository.saveAndFlush(consumer);
-        return "Bearer " + jwtTokenProvider.issue(consumer.getId(), consumer.getRole());
+        return "Bearer " + jwtTokenProvider.issue(consumer.getId());
     }
 
     private User saveOwner() {
