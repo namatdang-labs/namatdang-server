@@ -38,8 +38,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/owner/stores").hasRole("CONSUMER")
                         .requestMatchers("/api/v1/owner/**").hasRole("OWNER")
                         .requestMatchers("/api/v1/favorites/**", "/api/v1/reservations/**").hasRole("CONSUMER")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/stores/**", "/api/v1/deals/**")
-                        .hasRole("CONSUMER")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/stores/**", "/api/v1/deals/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions

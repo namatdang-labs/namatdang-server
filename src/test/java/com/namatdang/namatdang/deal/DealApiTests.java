@@ -189,9 +189,38 @@ class DealApiTests extends IntegrationTestSupport {
     }
 
     @Test
-    void dealsWithoutTokenReturnsUnauthorized() throws Exception {
-        mockMvc.perform(get("/api/v1/deals"))
-                .andExpect(status().isUnauthorized());
+    void guestGetsSellingDealsWithoutToken() throws Exception {
+        long existingDealCount = currentSellingDealCount();
+        User owner = saveUser(UserRole.OWNER);
+        Store store = saveStore(owner);
+        Deal deal = saveDeal(store, hoursLater(3), 5);
+
+        mockMvc.perform(get("/api/v1/deals")
+                        .param("page", "0")
+                        .param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(existingDealCount + 1))
+                .andExpect(jsonPath("$.content[0].dealId").value(deal.getId()));
+    }
+
+    @Test
+    void guestGetsDealDetailWithoutToken() throws Exception {
+        User owner = saveUser(UserRole.OWNER);
+        Store store = saveStore(owner);
+        Deal deal = saveDeal(store, hoursLater(3), 5);
+
+        mockMvc.perform(get("/api/v1/deals/{dealId}", deal.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dealId").value(deal.getId()))
+                .andExpect(jsonPath("$.items[0].salePrice").value(2000));
+    }
+
+    @Test
+    void dealsWithInvalidTokenReturnsUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/v1/deals")
+                        .header("Authorization", "Bearer invalid.token.value"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
     // 초 단위로 잘라 DB 왕복이나 JSON 직렬화의 소수점 자리 차이로 값 비교가 흔들리지 않게 한다.
