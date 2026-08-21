@@ -1,10 +1,8 @@
 package com.namatdang.namatdang.user.dto;
 
 import com.namatdang.namatdang.user.entity.User;
-import com.namatdang.namatdang.user.entity.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.Locale;
@@ -30,18 +28,11 @@ public class UserSignUpRequestDto {
     @Pattern(regexp = "^\\d{2,3}-?\\d{3,4}-?\\d{4}$", message = "전화번호 형식이 올바르지 않습니다.")
     private String phoneNumber;
 
-    @NotNull(message = "역할은 필수 입력 값입니다.")
-    private UserRole role;
-
     public String normalizedEmail() {
         return email.strip().toLowerCase(Locale.ROOT);
     }
 
     public User toEntity(String encodedPassword) {
-        return new User(normalizedEmail(),
-                        encodedPassword,
-                        name,
-                        phoneNumber,
-                        role);
+        return new User(normalizedEmail(), encodedPassword, name, phoneNumber);
     }
 }

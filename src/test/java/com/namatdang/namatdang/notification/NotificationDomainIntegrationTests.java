@@ -78,7 +78,7 @@ class NotificationDomainIntegrationTests extends IntegrationTestSupport {
 
         MvcResult result = mockMvc.perform(post("/api/v1/owner/stores/{storeId}/deals", store.getId())
                                                   .header("Authorization", "Bearer "
-                                                          + jwtTokenProvider.issue(owner.getId(), owner.getRole()))
+                                                          + jwtTokenProvider.issue(owner.getId()))
                                                   .contentType(MediaType.APPLICATION_JSON)
                                                   .content(dealRequestBody()))
                 .andExpect(status().isCreated())

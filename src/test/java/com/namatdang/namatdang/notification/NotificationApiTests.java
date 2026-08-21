@@ -12,6 +12,7 @@ import com.namatdang.namatdang.notification.entity.Notification;
 import com.namatdang.namatdang.notification.entity.NotificationType;
 import com.namatdang.namatdang.notification.repository.NotificationRepository;
 import com.namatdang.namatdang.notification.service.NotificationCleanupService;
+import com.namatdang.namatdang.security.JwtTokenProvider;
 import com.namatdang.namatdang.support.IntegrationTestSupport;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.entity.UserRole;
@@ -56,6 +57,9 @@ class NotificationApiTests extends IntegrationTestSupport {
     @Autowired
     private EntityManager entityManager;
 
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
     @Test
     void getRecentNotificationsInDescendingOrder() throws Exception {
         User user = saveUser("list");
@@ -67,7 +71,7 @@ class NotificationApiTests extends IntegrationTestSupport {
         makeOlderThanThirtyDays(old);
 
         mockMvc.perform(get("/api/v1/notifications")
-                        .requestAttr("userId", user.getId()))
+                        .header("Authorization", bearerToken(user)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notifications.length()").value(2))
                 .andExpect(jsonPath("$.notifications[0].id").value(second.getId()))
@@ -83,7 +87,7 @@ class NotificationApiTests extends IntegrationTestSupport {
         Notification third = saveNotification(203L, user.getId(), NotificationType.RESERVATION_CANCELED);
 
         mockMvc.perform(get("/api/v1/notifications")
-                        .requestAttr("userId", user.getId())
+                        .header("Authorization", bearerToken(user))
                         .param("size", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notifications.length()").value(2))
@@ -93,7 +97,7 @@ class NotificationApiTests extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.hasNext").value(true));
 
         mockMvc.perform(get("/api/v1/notifications")
-                        .requestAttr("userId", user.getId())
+                        .header("Authorization", bearerToken(user))
                         .param("cursor", second.getId().toString())
                         .param("size", "2"))
                 .andExpect(status().isOk())
@@ -122,7 +126,7 @@ class NotificationApiTests extends IntegrationTestSupport {
         makeOlderThanThirtyDays(oldUnreadNotification);
 
         mockMvc.perform(get("/api/v1/notifications/unread-count")
-                        .requestAttr("userId", user.getId()))
+                        .header("Authorization", bearerToken(user)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.unreadCount").value(2));
     }
@@ -133,7 +137,7 @@ class NotificationApiTests extends IntegrationTestSupport {
         Notification notification = saveNotification(401L, user.getId(), NotificationType.DEAL_CREATED);
 
         mockMvc.perform(patch("/api/v1/notifications/{notificationId}/read", notification.getId())
-                        .requestAttr("userId", user.getId()))
+                        .header("Authorization", bearerToken(user)))
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
@@ -148,12 +152,12 @@ class NotificationApiTests extends IntegrationTestSupport {
         Notification notification = saveNotification(501L, user.getId(), NotificationType.DEAL_CREATED);
 
         mockMvc.perform(patch("/api/v1/notifications/{notificationId}/read", notification.getId())
-                        .requestAttr("userId", user.getId()))
+                        .header("Authorization", bearerToken(user)))
                 .andExpect(status().isNoContent());
         LocalDateTime firstReadAt = notification.getReadAt();
 
         mockMvc.perform(patch("/api/v1/notifications/{notificationId}/read", notification.getId())
-                        .requestAttr("userId", user.getId()))
+                        .header("Authorization", bearerToken(user)))
                 .andExpect(status().isNoContent());
 
         assertThat(notification.getReadAt()).isEqualTo(firstReadAt);
@@ -166,7 +170,7 @@ class NotificationApiTests extends IntegrationTestSupport {
         Notification notification = saveNotification(601L, owner.getId(), NotificationType.DEAL_CREATED);
 
         mockMvc.perform(patch("/api/v1/notifications/{notificationId}/read", notification.getId())
-                        .requestAttr("userId", otherUser.getId()))
+                        .header("Authorization", bearerToken(otherUser)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOTIFICATION_NOT_FOUND"));
     }
@@ -176,7 +180,7 @@ class NotificationApiTests extends IntegrationTestSupport {
         User user = saveUser("unknown");
 
         mockMvc.perform(patch("/api/v1/notifications/{notificationId}/read", Long.MAX_VALUE)
-                        .requestAttr("userId", user.getId()))
+                        .header("Authorization", bearerToken(user)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOTIFICATION_NOT_FOUND"));
     }
@@ -186,7 +190,7 @@ class NotificationApiTests extends IntegrationTestSupport {
         User user = saveUser("invalid-pagination");
 
         mockMvc.perform(get("/api/v1/notifications")
-                        .requestAttr("userId", user.getId())
+                        .header("Authorization", bearerToken(user))
                         .param("size", "0"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
@@ -255,5 +259,9 @@ class NotificationApiTests extends IntegrationTestSupport {
                 notification.getId()
         );
         entityManager.clear();
+    }
+
+    private String bearerToken(User user) {
+        return "Bearer " + jwtTokenProvider.issue(user.getId());
     }
 }

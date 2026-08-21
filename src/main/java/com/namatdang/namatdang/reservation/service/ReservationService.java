@@ -216,7 +216,7 @@ public class ReservationService {
         User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new BusinessLogicException(ExceptionCode.USER_NOT_FOUND));
 
-        if (user.getRole() != UserRole.CONSUMER) {
+        if (!user.hasRole(UserRole.CONSUMER)) {
             throw new BusinessLogicException(ExceptionCode.FORBIDDEN);
         }
 
@@ -227,7 +227,7 @@ public class ReservationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessLogicException(ExceptionCode.USER_NOT_FOUND));
 
-        if (user.getRole() != UserRole.CONSUMER) {
+        if (!user.hasRole(UserRole.CONSUMER)) {
             throw new BusinessLogicException(ExceptionCode.FORBIDDEN);
         }
 

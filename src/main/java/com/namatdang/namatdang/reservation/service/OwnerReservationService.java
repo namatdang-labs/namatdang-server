@@ -89,7 +89,7 @@ public class OwnerReservationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessLogicException(ExceptionCode.USER_NOT_FOUND));
 
-        if (user.getRole() != UserRole.OWNER) {
+        if (!user.hasRole(UserRole.OWNER)) {
             throw new BusinessLogicException(ExceptionCode.FORBIDDEN);
         }
 

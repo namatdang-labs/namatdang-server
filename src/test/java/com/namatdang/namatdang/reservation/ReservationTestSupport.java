@@ -34,7 +34,7 @@ public abstract class ReservationTestSupport extends IntegrationTestSupport {
     protected JwtTokenProvider jwtTokenProvider;
 
     protected String bearerToken(User user) {
-        return "Bearer " + jwtTokenProvider.issue(user.getId(), user.getRole());
+        return "Bearer " + jwtTokenProvider.issue(user.getId());
     }
 
     protected String uniqueValue() {

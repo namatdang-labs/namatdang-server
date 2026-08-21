@@ -1,5 +1,6 @@
 package com.namatdang.namatdang.auth;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -17,6 +18,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +39,9 @@ class AuthApiTests extends IntegrationTestSupport {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
+    @Autowired
+    private JwtDecoder jwtDecoder;
+
     @Test
     void loginIssuesAccessTokenAndUserInformation() throws Exception {
         String email = uniqueEmail();
@@ -55,7 +60,8 @@ class AuthApiTests extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
                 .andExpect(jsonPath("$.expiresIn").value(3600))
                 .andExpect(jsonPath("$.user.id").value(user.getId()))
-                .andExpect(jsonPath("$.user.role").value("OWNER"));
+                .andExpect(jsonPath("$.user.roles[0]").value("CONSUMER"))
+                .andExpect(jsonPath("$.user.roles[1]").value("OWNER"));
     }
 
     @Test
@@ -82,7 +88,7 @@ class AuthApiTests extends IntegrationTestSupport {
     @Test
     void accessTokenAuthenticatesCurrentUser() throws Exception {
         User user = saveUser(uniqueEmail(), UserRole.CONSUMER);
-        String token = jwtTokenProvider.issue(user.getId(), user.getRole());
+        String token = jwtTokenProvider.issue(user.getId());
 
         mockMvc.perform(get("/api/v1/users/me")
                         .header("Authorization", "Bearer " + token))
@@ -97,6 +103,16 @@ class AuthApiTests extends IntegrationTestSupport {
                         .header("Authorization", "Bearer invalid-token"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
+    void accessTokenContainsUserIdWithoutRoleClaims() {
+        User user = saveUser(uniqueEmail(), UserRole.OWNER);
+
+        var jwt = jwtDecoder.decode(jwtTokenProvider.issue(user.getId()));
+
+        assertThat(jwt.getSubject()).isEqualTo(user.getId().toString());
+        assertThat(jwt.getClaims()).doesNotContainKeys("role", "roles");
     }
 
     private User saveUser(String email, UserRole role) {

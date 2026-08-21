@@ -49,7 +49,7 @@ class UserApiTests extends IntegrationTestSupport {
     private JwtTokenProvider jwtTokenProvider;
 
     @Test
-    void ownerCanSignUp() throws Exception {
+    void signupCannotGrantOwnerRoleFromRequest() throws Exception {
         String email = uniqueEmail("owner");
 
         mockMvc.perform(post("/api/v1/auth/signup")
@@ -65,16 +65,18 @@ class UserApiTests extends IntegrationTestSupport {
                                 """.formatted(email)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email").value(email))
-                .andExpect(jsonPath("$.role").value("OWNER"))
+                .andExpect(jsonPath("$.roles.length()").value(1))
+                .andExpect(jsonPath("$.roles[0]").value("CONSUMER"))
                 .andExpect(jsonPath("$.password").doesNotExist());
 
         User user = userRepository.findByEmail(email).orElseThrow();
         assertThat(user.getPassword()).isNotEqualTo("password123");
         assertThat(passwordEncoder.matches("password123", user.getPassword())).isTrue();
+        assertThat(user.getRoles()).containsExactly(UserRole.CONSUMER);
     }
 
     @Test
-    void consumerCanSignUp() throws Exception {
+    void signupWithoutRoleCreatesConsumer() throws Exception {
         String email = uniqueEmail("consumer");
 
         mockMvc.perform(post("/api/v1/auth/signup")
@@ -84,12 +86,12 @@ class UserApiTests extends IntegrationTestSupport {
                                   "email": "%s",
                                   "password": "password123",
                                   "name": "소비자",
-                                  "phoneNumber": "010-5678-1234",
-                                  "role": "CONSUMER"
+                                  "phoneNumber": "010-5678-1234"
                                 }
                                 """.formatted(email)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.role").value("CONSUMER"));
+                .andExpect(jsonPath("$.roles.length()").value(1))
+                .andExpect(jsonPath("$.roles[0]").value("CONSUMER"));
     }
 
     @Test
@@ -104,8 +106,7 @@ class UserApiTests extends IntegrationTestSupport {
                                   "email": "%s",
                                   "password": "password123",
                                   "name": "중복회원",
-                                  "phoneNumber": "010-1234-5678",
-                                  "role": "CONSUMER"
+                                  "phoneNumber": "010-1234-5678"
                                 }
                                 """.formatted(email.toUpperCase(Locale.ROOT))))
                 .andExpect(status().isConflict())
@@ -118,13 +119,13 @@ class UserApiTests extends IntegrationTestSupport {
         User user = saveUser(email);
 
         mockMvc.perform(get("/api/v1/users/me")
-                        .header("Authorization", bearerToken(user.getId(), user.getRole())))
+                        .header("Authorization", bearerToken(user.getId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(user.getId()))
                 .andExpect(jsonPath("$.email").value(email))
                 .andExpect(jsonPath("$.name").value(user.getName()))
                 .andExpect(jsonPath("$.phoneNumber").value(user.getPhoneNumber()))
-                .andExpect(jsonPath("$.role").value("CONSUMER"))
+                .andExpect(jsonPath("$.roles[0]").value("CONSUMER"))
                 .andExpect(jsonPath("$.createdAt").exists())
                 .andExpect(jsonPath("$.updatedAt").exists())
                 .andExpect(jsonPath("$.password").doesNotExist());
@@ -135,7 +136,7 @@ class UserApiTests extends IntegrationTestSupport {
         User user = saveUser(uniqueEmail("update"));
 
         mockMvc.perform(patch("/api/v1/users/me")
-                        .header("Authorization", bearerToken(user.getId(), user.getRole()))
+                        .header("Authorization", bearerToken(user.getId()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -147,7 +148,7 @@ class UserApiTests extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.email").value(user.getEmail()))
                 .andExpect(jsonPath("$.name").value("수정이름"))
                 .andExpect(jsonPath("$.phoneNumber").value("010-9999-9999"))
-                .andExpect(jsonPath("$.role").value("CONSUMER"));
+                .andExpect(jsonPath("$.roles[0]").value("CONSUMER"));
     }
 
     @Test
@@ -155,7 +156,7 @@ class UserApiTests extends IntegrationTestSupport {
         User user = saveUser(uniqueEmail("empty-update"));
 
         mockMvc.perform(patch("/api/v1/users/me")
-                        .header("Authorization", bearerToken(user.getId(), user.getRole()))
+                        .header("Authorization", bearerToken(user.getId()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())
@@ -165,7 +166,7 @@ class UserApiTests extends IntegrationTestSupport {
     @Test
     void deletedUserCannotBeAccessedOrDeletedAgain() throws Exception {
         User user = saveUser(uniqueEmail("delete"));
-        String token = bearerToken(user.getId(), user.getRole());
+        String token = bearerToken(user.getId());
 
         mockMvc.perform(delete("/api/v1/users/me")
                         .header("Authorization", token))
@@ -187,13 +188,13 @@ class UserApiTests extends IntegrationTestSupport {
     @Test
     void unknownUserReturnsUnauthorized() throws Exception {
         mockMvc.perform(get("/api/v1/users/me")
-                        .header("Authorization", bearerToken(Long.MAX_VALUE, UserRole.CONSUMER)))
+                        .header("Authorization", bearerToken(Long.MAX_VALUE)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
-    private String bearerToken(Long userId, UserRole role) {
-        return "Bearer " + jwtTokenProvider.issue(userId, role);
+    private String bearerToken(Long userId) {
+        return "Bearer " + jwtTokenProvider.issue(userId);
     }
 
     @Test
@@ -210,7 +211,7 @@ class UserApiTests extends IntegrationTestSupport {
         storeRepository.saveAndFlush(store);
 
         mockMvc.perform(delete("/api/v1/users/me")
-                        .header("Authorization", bearerToken(owner.getId(), owner.getRole())))
+                        .header("Authorization", bearerToken(owner.getId())))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("OWNER_HAS_STORES"));
 
