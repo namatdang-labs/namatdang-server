@@ -3,3 +3,7 @@
 .idea
 .env
 *.log
+jinsu
+build/*
+!build/libs
+!build/libs/*.jar

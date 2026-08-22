@@ -1,0 +1,147 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - main
+      - chore/backend-ci
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/chore/backend-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: namatdang_ci
+          MYSQL_USER: namatdang_ci
+          MYSQL_PASSWORD: ci-only-password
+          MYSQL_ROOT_PASSWORD: ci-only-root-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-only-root-password --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=30s
+
+    env:
+      DB_URL: jdbc:mysql://127.0.0.1:3306/namatdang_ci?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+      DB_USERNAME: namatdang_ci
+      DB_PASSWORD: ci-only-password
+      RUN_LOCALSTACK_TESTS: "false"
+      RUN_FIREBASE_TESTS: "false"
+      NOTIFICATION_SQS_ENABLED: "false"
+      NOTIFICATION_SQS_CONSUMER_ENABLED: "false"
+      NOTIFICATION_PUSH_ENABLED: "false"
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      - name: Generate temporary JWT RSA keys
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          key_dir="$(mktemp -d)"
+          trap 'rm -rf "$key_dir"' EXIT
+
+          openssl genpkey \
+            -algorithm RSA \
+            -pkeyopt rsa_keygen_bits:2048 \
+            -out "$key_dir/private.pem" \
+            >/dev/null 2>&1
+          openssl pkey \
+            -in "$key_dir/private.pem" \
+            -pubout \
+            -outform DER \
+            -out "$key_dir/public.der" \
+            >/dev/null 2>&1
+          openssl pkcs8 \
+            -topk8 \
+            -nocrypt \
+            -in "$key_dir/private.pem" \
+            -outform DER \
+            -out "$key_dir/private.der" \
+            >/dev/null 2>&1
+
+          {
+            echo "JWT_PRIVATE_KEY_BASE64<<JWT_PRIVATE_KEY_EOF"
+            base64 -w 0 "$key_dir/private.der"
+            echo
+            echo "JWT_PRIVATE_KEY_EOF"
+            echo "JWT_PUBLIC_KEY_BASE64<<JWT_PUBLIC_KEY_EOF"
+            base64 -w 0 "$key_dir/public.der"
+            echo
+            echo "JWT_PUBLIC_KEY_EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Build and test
+        run: ./gradlew build --no-daemon
+
+      - name: Build Docker image
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          docker build \
+            --platform linux/amd64 \
+            --tag "namatdang-api:${GITHUB_SHA}" \
+            .
+          test "$(docker image inspect "namatdang-api:${GITHUB_SHA}" --format '{{.Architecture}}')" = amd64
+
+      - name: Package deployment artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          docker save "namatdang-api:${GITHUB_SHA}" \
+            | gzip -1 > namatdang-api.tar.gz
+          sha256sum namatdang-api.tar.gz > namatdang-api.tar.gz.sha256
+          tar -cf namatdang-release.tar \
+            namatdang-api.tar.gz \
+            namatdang-api.tar.gz.sha256 \
+            compose.prod.yml \
+            deploy/deploy.sh
+
+      - name: Upload deployment artifact
+        uses: actions/upload-artifact@v7
+        with:
+          path: namatdang-release.tar
+          archive: false
+          retention-days: 7
+
+      - name: Upload failed test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-test-reports-${{ github.sha }}
+          path: |
+            build/reports/tests/**
+            build/test-results/**
+          if-no-files-found: ignore
+          retention-days: 7
