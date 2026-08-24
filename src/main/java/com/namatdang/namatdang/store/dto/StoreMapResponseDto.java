@@ -1,5 +1,8 @@
 package com.namatdang.namatdang.store.dto;
 
+import com.namatdang.namatdang.deal.entity.Deal;
+import com.namatdang.namatdang.media.ImageUrls;
+import com.namatdang.namatdang.media.ImageVariant;
 import com.namatdang.namatdang.store.entity.Store;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
@@ -38,7 +41,13 @@ public class StoreMapResponseDto {
     @Schema(description = "현재 판매 중인 딜 개수", example = "1")
     private long activeDealCount;
 
-    public static StoreMapResponseDto of(Store store, long activeDealCount) {
+    @Schema(description = "지도 팝업용 최신 딜 썸네일 URL(없으면 매장 대표 썸네일)", nullable = true)
+    private String imageUrl;
+
+    @Schema(description = "카드용 최신 딜 이미지 URL(없으면 매장 대표 이미지)", nullable = true)
+    private String cardImageUrl;
+
+    public static StoreMapResponseDto of(Store store, long activeDealCount, Deal latestImageDeal) {
         return StoreMapResponseDto.builder()
                 .id(store.getId())
                 .name(store.getName())
@@ -49,6 +58,12 @@ public class StoreMapResponseDto {
                 .longitude(store.getLongitude())
                 .hasActiveDeal(activeDealCount > 0)
                 .activeDealCount(activeDealCount)
+                .imageUrl(latestImageDeal == null
+                        ? ImageUrls.forStore(store, ImageVariant.THUMBNAIL)
+                        : ImageUrls.forDeal(latestImageDeal, ImageVariant.THUMBNAIL))
+                .cardImageUrl(latestImageDeal == null
+                        ? ImageUrls.forStore(store, ImageVariant.CARD)
+                        : ImageUrls.forDeal(latestImageDeal, ImageVariant.CARD))
                 .build();
     }
 }

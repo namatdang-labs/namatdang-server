@@ -1,13 +1,14 @@
 package com.namatdang.namatdang.store.service;
 
+import com.namatdang.namatdang.deal.entity.Deal;
 import com.namatdang.namatdang.deal.entity.DealStatus;
 import com.namatdang.namatdang.deal.repository.DealRepository;
 import com.namatdang.namatdang.exception.BusinessLogicException;
 import com.namatdang.namatdang.exception.ExceptionCode;
+import com.namatdang.namatdang.store.dto.StoreDetailResponseDto;
 import com.namatdang.namatdang.store.dto.StoreMapRequestDto;
 import com.namatdang.namatdang.store.dto.StoreMapResponseDto;
 import com.namatdang.namatdang.store.dto.StorePageResponseDto;
-import com.namatdang.namatdang.store.dto.StoreResponseDto;
 import com.namatdang.namatdang.store.entity.Store;
 import com.namatdang.namatdang.store.repository.StoreRepository;
 import java.math.BigDecimal;
@@ -30,6 +31,7 @@ import org.springframework.util.StringUtils;
 public class StoreService {
 
     private static final int MAX_PAGE_SIZE = 100;
+    private static final int RECENT_DEAL_IMAGE_LIMIT = 3;
 
     private final StoreRepository storeRepository;
     private final DealRepository dealRepository;
@@ -45,10 +47,16 @@ public class StoreService {
     }
 
     @Transactional(readOnly = true)
-    public StoreResponseDto getStore(Long storeId) {
+    public StoreDetailResponseDto getStore(Long storeId) {
         Store store = findStoreById(storeId);
+        List<Deal> recentImageDeals =
+                dealRepository.findRecentImageDealsByStoreId(
+                        storeId,
+                        DealStatus.CANCELED,
+                        PageRequest.of(0, RECENT_DEAL_IMAGE_LIMIT)
+                );
 
-        return StoreResponseDto.from(store);
+        return StoreDetailResponseDto.of(store, recentImageDeals);
     }
 
     @Transactional(readOnly = true)
@@ -64,9 +72,13 @@ public class StoreService {
 
         List<Long> storeIds = stores.stream().map(Store::getId).toList();
         Map<Long, Long> activeDealCountMap = getActiveDealCounts(storeIds, now);
+        Map<Long, Deal> latestImageDealMap = getLatestImageDeals(storeIds);
 
         return stores.stream()
-                .map(store -> StoreMapResponseDto.of(store, activeDealCountMap.getOrDefault(store.getId(), 0L)))
+                .map(store -> StoreMapResponseDto.of(
+                        store,
+                        activeDealCountMap.getOrDefault(store.getId(), 0L),
+                        latestImageDealMap.get(store.getId())))
                 .toList();
     }
 
@@ -119,6 +131,15 @@ public class StoreService {
             countMap.put(storeId, count);
         }
         return countMap;
+    }
+
+    private Map<Long, Deal> getLatestImageDeals(List<Long> storeIds) {
+        List<Deal> deals = dealRepository.findLatestImageDealsByStoreIds(storeIds, DealStatus.CANCELED);
+        Map<Long, Deal> dealMap = new HashMap<>();
+        for (Deal deal : deals) {
+            dealMap.put(deal.getStore().getId(), deal);
+        }
+        return dealMap;
     }
 
     private Pageable createPageable(int page, int size) {

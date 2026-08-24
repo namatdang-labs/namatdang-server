@@ -4,14 +4,22 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.namatdang.namatdang.deal.entity.Deal;
+import com.namatdang.namatdang.deal.entity.DealItem;
+import com.namatdang.namatdang.deal.entity.DealStatus;
+import com.namatdang.namatdang.deal.repository.DealRepository;
 import com.namatdang.namatdang.security.JwtTokenProvider;
 import com.namatdang.namatdang.store.entity.Store;
 import com.namatdang.namatdang.store.repository.StoreRepository;
+import com.namatdang.namatdang.support.IntegrationTestSupport;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.entity.UserRole;
-import com.namatdang.namatdang.support.IntegrationTestSupport;
 import com.namatdang.namatdang.user.repository.UserRepository;
+import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +46,10 @@ class StoreApiTests extends IntegrationTestSupport {
     private JwtTokenProvider jwtTokenProvider;
 
     @Autowired
-    private com.namatdang.namatdang.deal.repository.DealRepository dealRepository;
+    private DealRepository dealRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Test
     void getStoresOnMapWithinBounds() throws Exception {
@@ -70,6 +81,59 @@ class StoreApiTests extends IntegrationTestSupport {
                 .andExpect(jsonPath("$[0].name").value("영역안 매장 " + keyword))
                 .andExpect(jsonPath("$[0].hasActiveDeal").value(false))
                 .andExpect(jsonPath("$[0].activeDealCount").value(0));
+    }
+
+    @Test
+    void mapPrefersLatestNonCanceledDealThumbnailAndFallsBackToStoreThumbnail() throws Exception {
+        User owner = saveOwner();
+        String latestKeyword = "지도최신이미지" + uniqueKeyword();
+        Store latestDealStore = saveStoreWithLocation(
+                owner, latestKeyword, "대구광역시 중구 1",
+                new BigDecimal("35.8714354"), new BigDecimal("128.6014450"));
+        latestDealStore.updateImageKey("images/stores/%d/legacy.jpg".formatted(latestDealStore.getId()));
+        storeRepository.saveAndFlush(latestDealStore);
+
+        Deal firstAtTie = saveImageDeal(latestDealStore, DealStatus.SELLING);
+        Deal latestAtTie = saveImageDeal(latestDealStore, DealStatus.ENDED);
+        Deal newerCanceled = saveImageDeal(latestDealStore, DealStatus.CANCELED);
+        Deal newerWithoutImage = saveDeal(latestDealStore, DealStatus.CLOSED, false);
+        LocalDateTime tiedCreatedAt = LocalDateTime.now().minusHours(2).truncatedTo(ChronoUnit.SECONDS);
+        setCreatedAt(tiedCreatedAt, List.of(firstAtTie, latestAtTie));
+        setCreatedAt(tiedCreatedAt.plusHours(1), List.of(newerCanceled, newerWithoutImage));
+
+        mockMvc.perform(get("/api/v1/stores/map")
+                        .param("minLat", "35.8000000")
+                        .param("maxLat", "35.9000000")
+                        .param("minLng", "128.5000000")
+                        .param("maxLng", "128.7000000")
+                        .param("keyword", latestKeyword))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].imageUrl").value(org.hamcrest.Matchers.startsWith(
+                        "/api/v1/deals/%d/image?variant=thumbnail&v=".formatted(latestAtTie.getId()))))
+                .andExpect(jsonPath("$[0].cardImageUrl").value(org.hamcrest.Matchers.startsWith(
+                        "/api/v1/deals/%d/image?variant=card&v=".formatted(latestAtTie.getId()))));
+
+        String fallbackKeyword = "지도대표이미지" + uniqueKeyword();
+        Store fallbackStore = saveStoreWithLocation(
+                owner, fallbackKeyword, "대구광역시 중구 2",
+                new BigDecimal("35.8715000"), new BigDecimal("128.6015000"));
+        fallbackStore.updateImageKey("images/stores/%d/legacy.jpg".formatted(fallbackStore.getId()));
+        storeRepository.saveAndFlush(fallbackStore);
+        saveImageDeal(fallbackStore, DealStatus.CANCELED);
+
+        mockMvc.perform(get("/api/v1/stores/map")
+                        .param("minLat", "35.8000000")
+                        .param("maxLat", "35.9000000")
+                        .param("minLng", "128.5000000")
+                        .param("maxLng", "128.7000000")
+                        .param("keyword", fallbackKeyword))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].imageUrl").value(org.hamcrest.Matchers.startsWith(
+                        "/api/v1/stores/%d/image?variant=thumbnail&v=".formatted(fallbackStore.getId()))))
+                .andExpect(jsonPath("$[0].cardImageUrl").value(org.hamcrest.Matchers.startsWith(
+                        "/api/v1/stores/%d/image?variant=card&v=".formatted(fallbackStore.getId()))));
     }
 
     @Test
@@ -406,7 +470,50 @@ class StoreApiTests extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.phoneNumber").value("053-123-4567"))
                 .andExpect(jsonPath("$.description").value("매장 설명"))
                 .andExpect(jsonPath("$.latitude").value(35.8714354))
-                .andExpect(jsonPath("$.longitude").value(128.6014450));
+                .andExpect(jsonPath("$.longitude").value(128.6014450))
+                .andExpect(jsonPath("$.recentDealImages").isEmpty());
+    }
+
+    @Test
+    void guestGetsLatestThreeStoreDealImagesInStableOrder() throws Exception {
+        User owner = saveOwner();
+        Store store = saveStore(owner,
+                                "최근 딜 사진 가게 " + uniqueKeyword(),
+                                "대구광역시 중구 국채보상로 3");
+        Store otherStore = saveStore(owner,
+                                     "다른 가게 " + uniqueKeyword(),
+                                     "대구광역시 중구 국채보상로 4");
+
+        Deal oldest = saveImageDeal(store, DealStatus.SELLING);
+        Deal thirdNewest = saveImageDeal(store, DealStatus.SELLING);
+        Deal secondNewestEnded = saveImageDeal(store, DealStatus.ENDED);
+        Deal closed = saveImageDeal(store, DealStatus.CLOSED);
+        Deal newest = saveImageDeal(store, DealStatus.SELLING);
+        Deal canceled = saveImageDeal(store, DealStatus.CANCELED);
+        Deal withoutImage = saveDeal(store, DealStatus.SELLING, false);
+        Deal otherStoreDeal = saveImageDeal(otherStore, DealStatus.SELLING);
+
+        LocalDateTime tiedCreatedAt = LocalDateTime.now()
+                .minusDays(1)
+                .truncatedTo(ChronoUnit.SECONDS);
+        setCreatedAt(tiedCreatedAt.minusHours(1), List.of(oldest));
+        setCreatedAt(tiedCreatedAt, List.of(thirdNewest, secondNewestEnded));
+        setCreatedAt(tiedCreatedAt.plusMinutes(30), List.of(closed));
+        setCreatedAt(tiedCreatedAt.plusHours(1), List.of(newest));
+        setCreatedAt(tiedCreatedAt.plusHours(2), List.of(canceled, withoutImage, otherStoreDeal));
+
+        mockMvc.perform(get("/api/v1/stores/{storeId}", store.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recentDealImages.length()").value(3))
+                .andExpect(jsonPath("$.recentDealImages[0].dealId").value(newest.getId()))
+                .andExpect(jsonPath("$.recentDealImages[0].imageUrl")
+                                   .value(org.hamcrest.Matchers.startsWith(
+                                           "/api/v1/deals/%d/image?variant=detail&v="
+                                                   .formatted(newest.getId()))))
+                .andExpect(jsonPath("$.recentDealImages[0].createdAt")
+                                   .value(tiedCreatedAt.plusHours(1).toString()))
+                .andExpect(jsonPath("$.recentDealImages[1].dealId").value(closed.getId()))
+                .andExpect(jsonPath("$.recentDealImages[2].dealId").value(secondNewestEnded.getId()));
     }
 
     @Test
@@ -434,7 +541,8 @@ class StoreApiTests extends IntegrationTestSupport {
         mockMvc.perform(get("/api/v1/stores/{storeId}", store.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(store.getId()))
-                .andExpect(jsonPath("$.name").value(store.getName()));
+                .andExpect(jsonPath("$.name").value(store.getName()))
+                .andExpect(jsonPath("$.recentDealImages").isEmpty());
     }
 
     @Test
@@ -621,6 +729,35 @@ class StoreApiTests extends IntegrationTestSupport {
         deal.addItem(new com.namatdang.namatdang.deal.entity.DealItem(
                 "테스트 품목", 2, 4000, 2000));
         dealRepository.saveAndFlush(deal);
+    }
+
+    private Deal saveImageDeal(Store store, DealStatus status) {
+        return saveDeal(store, status, true);
+    }
+
+    private Deal saveDeal(Store store, DealStatus status, boolean withImage) {
+        Deal deal = new Deal(store, LocalDateTime.now().plusHours(2), "최근 딜 사진 테스트");
+        deal.addItem(new DealItem("테스트 품목", 2, 4000, 2000));
+        if (withImage) {
+            deal.updateImageKey("images/deals/prefix/" + UUID.randomUUID() + ".jpg");
+        }
+        if (status == DealStatus.ENDED) {
+            deal.markEnded();
+        } else if (status != DealStatus.SELLING) {
+            org.springframework.test.util.ReflectionTestUtils.setField(deal, "status", status);
+        }
+        return dealRepository.saveAndFlush(deal);
+    }
+
+    private void setCreatedAt(LocalDateTime createdAt, List<Deal> deals) {
+        entityManager.flush();
+        for (Deal deal : deals) {
+            entityManager.createNativeQuery("UPDATE deals SET created_at = :createdAt WHERE id = :dealId")
+                    .setParameter("createdAt", createdAt)
+                    .setParameter("dealId", deal.getId())
+                    .executeUpdate();
+        }
+        entityManager.clear();
     }
 
     private String uniqueKeyword() {

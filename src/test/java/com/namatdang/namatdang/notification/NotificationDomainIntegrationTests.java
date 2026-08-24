@@ -1,7 +1,7 @@
 package com.namatdang.namatdang.notification;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.namatdang.namatdang.deal.entity.Deal;
@@ -17,12 +17,14 @@ import com.namatdang.namatdang.security.JwtTokenProvider;
 import com.namatdang.namatdang.store.entity.Store;
 import com.namatdang.namatdang.store.repository.StoreRepository;
 import com.namatdang.namatdang.support.IntegrationTestSupport;
+import com.namatdang.namatdang.support.TestImageStorageConfiguration;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.entity.UserRole;
 import com.namatdang.namatdang.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
@@ -30,7 +32,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +43,7 @@ import tools.jackson.databind.ObjectMapper;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@Import(TestImageStorageConfiguration.class)
 class NotificationDomainIntegrationTests extends IntegrationTestSupport {
 
     @Autowired
@@ -76,11 +81,13 @@ class NotificationDomainIntegrationTests extends IntegrationTestSupport {
         User owner = saveUser(UserRole.OWNER);
         Store store = saveStore(owner);
 
-        MvcResult result = mockMvc.perform(post("/api/v1/owner/stores/{storeId}/deals", store.getId())
+        MockMultipartFile request = new MockMultipartFile(
+                "request", "", MediaType.APPLICATION_JSON_VALUE,
+                dealRequestBody().getBytes(StandardCharsets.UTF_8));
+        MvcResult result = mockMvc.perform(multipart("/api/v1/owner/stores/{storeId}/deals", store.getId())
+                                                  .file(request)
                                                   .header("Authorization", "Bearer "
-                                                          + jwtTokenProvider.issue(owner.getId()))
-                                                  .contentType(MediaType.APPLICATION_JSON)
-                                                  .content(dealRequestBody()))
+                                                          + jwtTokenProvider.issue(owner.getId())))
                 .andExpect(status().isCreated())
                 .andReturn();
 
@@ -97,6 +104,7 @@ class NotificationDomainIntegrationTests extends IntegrationTestSupport {
                 .findFirst()
                 .orElseThrow();
 
+        assertThat(savedDeal.getImageKey()).isNull();
         assertThat(savedEvent.getEventType()).isEqualTo(NotificationEventType.DEAL_CREATED);
         assertThat(savedEvent.getDealId()).isEqualTo(savedDeal.getId());
         assertThat(savedEvent.getStoreId()).isEqualTo(store.getId());

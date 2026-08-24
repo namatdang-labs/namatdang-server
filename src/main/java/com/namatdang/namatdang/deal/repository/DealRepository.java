@@ -234,6 +234,43 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
     @EntityGraph(attributePaths = "store")
     Page<Deal> findByStoreIdAndStatus(Long storeId, DealStatus status, Pageable pageable);
 
+    @Query("""
+            SELECT deal
+            FROM Deal deal
+            WHERE deal.store.id = :storeId
+              AND deal.imageKey IS NOT NULL
+              AND deal.status <> :excludedStatus
+            ORDER BY deal.createdAt DESC, deal.id DESC
+            """)
+    List<Deal> findRecentImageDealsByStoreId(@Param("storeId") Long storeId,
+                                              @Param("excludedStatus") DealStatus excludedStatus,
+                                              Pageable pageable);
+
+    @EntityGraph(attributePaths = "store")
+    @Query("""
+            SELECT deal
+            FROM Deal deal
+            WHERE deal.store.id IN :storeIds
+              AND deal.imageKey IS NOT NULL
+              AND deal.status <> :excludedStatus
+              AND NOT EXISTS (
+                    SELECT newerDeal.id
+                    FROM Deal newerDeal
+                    WHERE newerDeal.store = deal.store
+                      AND newerDeal.imageKey IS NOT NULL
+                      AND newerDeal.status <> :excludedStatus
+                      AND (
+                            newerDeal.createdAt > deal.createdAt
+                            OR (
+                                newerDeal.createdAt = deal.createdAt
+                                AND newerDeal.id > deal.id
+                            )
+                      )
+              )
+            """)
+    List<Deal> findLatestImageDealsByStoreIds(@Param("storeIds") Collection<Long> storeIds,
+                                               @Param("excludedStatus") DealStatus excludedStatus);
+
     @EntityGraph(attributePaths = {"store", "items"})
     Optional<Deal> findWithItemsById(Long dealId);
 

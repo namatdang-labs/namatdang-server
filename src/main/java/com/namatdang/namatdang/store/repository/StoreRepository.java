@@ -8,8 +8,10 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 
 public interface StoreRepository extends JpaRepository<Store, Long> {
 
@@ -26,6 +28,11 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
     List<Store> findAllByOwnerIdOrderByIdAsc(Long ownerId);
 
     Optional<Store> findByIdAndOwnerId(Long storeId, Long ownerId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select store from Store store where store.id = :storeId and store.owner.id = :ownerId")
+    Optional<Store> findByIdAndOwnerIdForUpdate(@Param("storeId") Long storeId,
+                                                @Param("ownerId") Long ownerId);
 
     Page<Store> findByNameContainingOrAddressContaining(String nameKeyword,
                                                         String addressKeyword,

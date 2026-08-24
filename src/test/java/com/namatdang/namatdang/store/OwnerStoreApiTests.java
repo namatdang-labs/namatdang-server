@@ -2,32 +2,42 @@ package com.namatdang.namatdang.store;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.namatdang.namatdang.security.JwtTokenProvider;
 import com.namatdang.namatdang.store.entity.Store;
 import com.namatdang.namatdang.store.repository.StoreRepository;
+import com.namatdang.namatdang.support.TestImageStorageConfiguration;
+import com.namatdang.namatdang.support.TestImages;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.entity.UserRole;
 import com.namatdang.namatdang.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpMethod;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@Import(TestImageStorageConfiguration.class)
 class OwnerStoreApiTests {
 
     @Autowired
@@ -70,6 +80,70 @@ class OwnerStoreApiTests {
                 .andExpect(jsonPath("$.latitude").value(35.8714354));
 
         assertThat(storeRepository.findAllByOwnerIdOrderByIdAsc(owner.getId())).hasSize(1);
+    }
+
+    @Test
+    void ownerCreatesStoreWithRepresentativeImageAndCustomersCanReadIt() throws Exception {
+        User owner = saveUser(UserRole.OWNER);
+        MockMultipartFile request = new MockMultipartFile(
+                "request", "", MediaType.APPLICATION_JSON_VALUE,
+                """
+                        {"name":"사진 있는 가게","address":"대구광역시 중구 동성로 1"}
+                        """.getBytes(StandardCharsets.UTF_8));
+        byte[] imageBytes = jpegBytes();
+        MockMultipartFile image = new MockMultipartFile(
+                "image", "store.jpg", MediaType.IMAGE_JPEG_VALUE, imageBytes);
+
+        mockMvc.perform(multipart("/api/v1/owner/stores")
+                        .file(request)
+                        .file(image)
+                        .header("Authorization", bearerToken(owner)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.imageUrl").isNotEmpty());
+
+        Store savedStore = storeRepository.findAllByOwnerIdOrderByIdAsc(owner.getId()).get(0);
+        mockMvc.perform(get("/api/v1/stores/{storeId}/image", savedStore.getId()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.valueOf("image/webp")))
+                .andExpect(result -> assertThat(result.getResponse().getContentAsByteArray())
+                        .containsExactly(TestImages.webp()));
+    }
+
+    @Test
+    void ownerReplacesAndDeletesStoreRepresentativeImage() throws Exception {
+        User owner = saveUser(UserRole.OWNER);
+        Store store = saveStore(owner, "사진 관리 가게 " + uniqueValue());
+        MockMultipartFile image = new MockMultipartFile(
+                "image", "store.jpg", MediaType.IMAGE_JPEG_VALUE, jpegBytes());
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/api/v1/owner/stores/{storeId}/image", store.getId())
+                        .file(image)
+                        .header("Authorization", bearerToken(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.imageUrl").isNotEmpty());
+
+        mockMvc.perform(delete("/api/v1/owner/stores/{storeId}/image", store.getId())
+                        .header("Authorization", bearerToken(owner)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/stores/{storeId}/image", store.getId()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("IMAGE_NOT_FOUND"));
+    }
+
+    @Test
+    void imageUploadRejectsContentWithFakeImageMimeType() throws Exception {
+        User owner = saveUser(UserRole.OWNER);
+        Store store = saveStore(owner, "잘못된 사진 가게 " + uniqueValue());
+        MockMultipartFile image = new MockMultipartFile(
+                "image", "fake.png", MediaType.IMAGE_PNG_VALUE,
+                "not-an-image".getBytes(StandardCharsets.UTF_8));
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/api/v1/owner/stores/{storeId}/image", store.getId())
+                        .file(image)
+                        .header("Authorization", bearerToken(owner)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_IMAGE"));
     }
 
     @Test
@@ -311,5 +385,9 @@ class OwnerStoreApiTests {
 
     private String bearerToken(User user) {
         return "Bearer " + jwtTokenProvider.issue(user.getId());
+    }
+
+    private byte[] jpegBytes() {
+        return TestImages.jpeg();
     }
 }

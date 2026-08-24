@@ -33,6 +33,7 @@ import org.hibernate.annotations.BatchSize;
 @Table(name = "deals", indexes = {
         @Index(name = "idx_deals_store_id", columnList = "store_id"),
         @Index(name = "idx_deals_store_id_status", columnList = "store_id, status"),
+        @Index(name = "idx_deals_store_created_at_id", columnList = "store_id, created_at, id"),
         @Index(name = "idx_deals_sales_ends_at", columnList = "sales_ends_at")
 })
 public class Deal {
@@ -54,6 +55,9 @@ public class Deal {
 
     @Lob
     private String description;
+
+    @Column(name = "image_key", length = 512)
+    private String imageKey;
 
     @OneToMany(mappedBy = "deal", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id asc")
@@ -127,6 +131,10 @@ public class Deal {
 
     public boolean isEnded() {
         return status == DealStatus.ENDED;
+    }
+
+    public void updateImageKey(String imageKey) {
+        this.imageKey = imageKey;
     }
 
     public int lowestSalePrice() {
