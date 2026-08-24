@@ -48,6 +48,9 @@ public class Store {
     @Lob
     private String description;
 
+    @Column(name = "image_key", length = 512)
+    private String imageKey;
+
     @Column(precision = 10, scale = 7)
     private BigDecimal latitude;
 
@@ -95,6 +98,10 @@ public class Store {
     public void updateLocation(BigDecimal latitude, BigDecimal longitude) {
         this.latitude = latitude == null ? this.latitude : latitude;
         this.longitude = longitude == null ? this.longitude : longitude;
+    }
+
+    public void updateImageKey(String imageKey) {
+        this.imageKey = imageKey;
     }
 
     private String normalizeNullable(String value) {

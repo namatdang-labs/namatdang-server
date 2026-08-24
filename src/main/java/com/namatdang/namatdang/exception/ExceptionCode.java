@@ -24,6 +24,11 @@ public enum ExceptionCode {
     CONCURRENT_REQUEST_CONFLICT(HttpStatus.CONFLICT, "CONCURRENT_REQUEST_CONFLICT", "같은 요청이 처리 중입니다. 잠시 후 다시 시도해 주세요."),
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_NOT_FOUND", "알림을 찾을 수 없습니다."),
     PUSH_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "PUSH_TOKEN_NOT_FOUND", "Push 토큰을 찾을 수 없습니다."),
+    IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "IMAGE_NOT_FOUND", "등록된 이미지를 찾을 수 없습니다."),
+    INVALID_IMAGE(HttpStatus.BAD_REQUEST, "INVALID_IMAGE", "JPG, PNG, WebP 이미지 파일을 선택해 주세요."),
+    IMAGE_TOO_LARGE(HttpStatus.CONTENT_TOO_LARGE, "IMAGE_TOO_LARGE", "이미지는 15MB 이하로 선택해 주세요."),
+    IMAGE_STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "IMAGE_STORAGE_UNAVAILABLE",
+                              "이미지를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."),
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "요청 값을 확인해 주세요.");
 
     private final HttpStatus status;

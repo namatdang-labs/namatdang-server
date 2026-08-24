@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Private S3 storage for Namatdang store and deal representative images
+
+Parameters:
+  ImageBucketName:
+    Type: String
+    Description: Globally unique private S3 bucket name for representative images
+  BackendRoleName:
+    Type: String
+    Description: Existing EC2 instance role or ECS task role used by the backend
+
+Resources:
+  ImageBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Ref ImageBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: AbortIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Service
+          Value: namatdang
+        - Key: Purpose
+          Value: representative-images
+
+  ImageBucketTlsPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ImageBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt ImageBucket.Arn
+              - !Sub "${ImageBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  BackendImageStoragePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: namatdang-image-storage
+      Roles:
+        - !Ref BackendRoleName
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ManageRepresentativeImages
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+            Resource: !Sub "${ImageBucket.Arn}/images/*"
+
+Outputs:
+  ImageBucketName:
+    Description: Set this value as IMAGE_S3_BUCKET in the backend runtime
+    Value: !Ref ImageBucket
+  ImageBucketArn:
+    Value: !GetAtt ImageBucket.Arn
+  AwsRegion:
+    Description: Set this value as AWS_REGION in the backend runtime
+    Value: !Ref AWS::Region
