@@ -2,14 +2,19 @@ package com.namatdang.namatdang.store.controller;
 
 import com.namatdang.namatdang.deal.dto.DealPageResponseDto;
 import com.namatdang.namatdang.deal.service.DealService;
+import com.namatdang.namatdang.store.dto.StoreDetailResponseDto;
+import com.namatdang.namatdang.store.dto.StoreMapRequestDto;
+import com.namatdang.namatdang.store.dto.StoreMapResponseDto;
 import com.namatdang.namatdang.store.dto.StorePageResponseDto;
-import com.namatdang.namatdang.store.dto.StoreResponseDto;
 import com.namatdang.namatdang.store.service.StoreService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -35,17 +40,15 @@ public class StoreController {
 
     @GetMapping("/map")
     @Operation(summary = "지도 영역(Bounding Box) 기반 매장 검색 및 할인 필터링")
-    public ResponseEntity<java.util.List<com.namatdang.namatdang.store.dto.StoreMapResponseDto>> getStoresOnMap(
-            @jakarta.validation.Valid @org.springframework.web.bind.annotation.ModelAttribute com.namatdang.namatdang.store.dto.StoreMapRequestDto requestDto) {
-        java.util.List<com.namatdang.namatdang.store.dto.StoreMapResponseDto> responseDto = storeService.getStoresOnMap(requestDto);
+    public ResponseEntity<List<StoreMapResponseDto>> getStoresOnMap(@Valid @ModelAttribute StoreMapRequestDto requestDto) {
+        List<StoreMapResponseDto> responseDto = storeService.getStoresOnMap(requestDto);
         return ResponseEntity.ok(responseDto);
     }
 
-
     @GetMapping("/{storeId}")
     @Operation(summary = "매장 상세 조회")
-    public ResponseEntity<StoreResponseDto> getStoreDetail(@PathVariable Long storeId) {
-        StoreResponseDto responseDto = storeService.getStore(storeId);
+    public ResponseEntity<StoreDetailResponseDto> getStoreDetail(@PathVariable Long storeId) {
+        StoreDetailResponseDto responseDto = storeService.getStore(storeId);
         return ResponseEntity.ok(responseDto);
     }
 

@@ -1,5 +1,7 @@
 package com.namatdang.namatdang.store.dto;
 
+import com.namatdang.namatdang.media.ImageUrls;
+import com.namatdang.namatdang.media.ImageVariant;
 import com.namatdang.namatdang.store.entity.Store;
 import java.math.BigDecimal;
 import lombok.AllArgsConstructor;
@@ -17,6 +19,7 @@ public class StoreResponseDto {
     private String description;
     private BigDecimal latitude;
     private BigDecimal longitude;
+    private String imageUrl;
 
     public static StoreResponseDto from(Store store) {
         return new StoreResponseDto(store.getId(),
@@ -26,6 +29,7 @@ public class StoreResponseDto {
                                     store.getPhoneNumber(),
                                     store.getDescription(),
                                     store.getLatitude(),
-                                    store.getLongitude());
+                                    store.getLongitude(),
+                                    ImageUrls.forStore(store, ImageVariant.CARD));
     }
 }
