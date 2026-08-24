@@ -1,0 +1,56 @@
+name: namatdang
+
+services:
+  app:
+    image: namatdang-api:${IMAGE_TAG:?IMAGE_TAG is required}
+    container_name: namatdang-api
+    restart: unless-stopped
+    init: true
+    read_only: true
+    mem_limit: 700m
+    pids_limit: 256
+    env_file:
+      - path: ${RUNTIME_ENV_FILE:?RUNTIME_ENV_FILE is required}
+        required: true
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        DB_PASSWORD="$(cat /run/secrets/db-password)"
+        JWT_PRIVATE_KEY_BASE64="$(cat /run/secrets/jwt-private-key)"
+        JWT_PUBLIC_KEY_BASE64="$(cat /run/secrets/jwt-public-key)"
+        test -n "$${DB_PASSWORD}"
+        test -n "$${JWT_PRIVATE_KEY_BASE64}"
+        test -n "$${JWT_PUBLIC_KEY_BASE64}"
+        export DB_PASSWORD JWT_PRIVATE_KEY_BASE64 JWT_PUBLIC_KEY_BASE64
+        exec java -jar /app.jar
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - type: bind
+        source: ${CERTS_DIR:-/opt/namatdang/certs}/rds-truststore.p12
+        target: /run/certs/rds-truststore.p12
+        read_only: true
+    secrets:
+      - db-password
+      - jwt-private-key
+      - jwt-public-key
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+secrets:
+  db-password:
+    file: ${SECRETS_DIR:-/opt/namatdang/secrets}/db-password
+  jwt-private-key:
+    file: ${SECRETS_DIR:-/opt/namatdang/secrets}/jwt-private.b64
+  jwt-public-key:
+    file: ${SECRETS_DIR:-/opt/namatdang/secrets}/jwt-public.b64
