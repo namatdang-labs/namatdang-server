@@ -37,6 +37,7 @@ required_files=(
     /opt/namatdang/secrets/db-password
     /opt/namatdang/secrets/jwt-private.b64
     /opt/namatdang/secrets/jwt-public.b64
+    /opt/namatdang/secrets/firebase-admin.json
     /opt/namatdang/certs/rds-truststore.p12
 )
 
@@ -46,6 +47,24 @@ for required_file in "${required_files[@]}"; do
         exit 1
     fi
 done
+
+if ! grep -Eq '^IMAGE_S3_BUCKET=.+$' "$runtime_env"; then
+    echo "IMAGE_S3_BUCKET is required for image storage." >&2
+    exit 1
+fi
+
+if grep -qx 'NOTIFICATION_PUSH_ENABLED=true' "$runtime_env"; then
+    if ! grep -Eq '^FIREBASE_PROJECT_ID=.+$' "$runtime_env"; then
+        echo "FIREBASE_PROJECT_ID is required when notification push is enabled." >&2
+        exit 1
+    fi
+    if ! grep -qx \
+        'GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/firebase-admin' \
+        "$runtime_env"; then
+        echo "GOOGLE_APPLICATION_CREDENTIALS must point to the Firebase Compose Secret." >&2
+        exit 1
+    fi
+fi
 
 rollback_dir="$(mktemp -d "$app_dir/.rollback.XXXXXX")"
 trap 'rm -rf "$rollback_dir"' EXIT
