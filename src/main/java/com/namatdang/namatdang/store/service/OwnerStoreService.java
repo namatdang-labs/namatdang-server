@@ -3,7 +3,7 @@ package com.namatdang.namatdang.store.service;
 import com.namatdang.namatdang.exception.BusinessLogicException;
 import com.namatdang.namatdang.exception.ExceptionCode;
 import com.namatdang.namatdang.media.ImageKind;
-import com.namatdang.namatdang.media.ImageMediaService;
+import com.namatdang.namatdang.media.service.ImageMediaService;
 import com.namatdang.namatdang.store.dto.StoreCreateRequestDto;
 import com.namatdang.namatdang.store.dto.StoreResponseDto;
 import com.namatdang.namatdang.store.dto.StoreUpdateRequestDto;

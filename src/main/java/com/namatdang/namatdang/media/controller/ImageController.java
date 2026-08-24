@@ -1,7 +1,10 @@
-package com.namatdang.namatdang.media;
+package com.namatdang.namatdang.media.controller;
 
 import com.namatdang.namatdang.exception.BusinessLogicException;
 import com.namatdang.namatdang.exception.ExceptionCode;
+import com.namatdang.namatdang.media.ImageVariant;
+import com.namatdang.namatdang.media.service.ImageContent;
+import com.namatdang.namatdang.media.service.ImageQueryService;
 import java.time.Duration;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;

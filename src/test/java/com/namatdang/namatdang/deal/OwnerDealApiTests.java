@@ -12,12 +12,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.namatdang.namatdang.deal.entity.Deal;
 import com.namatdang.namatdang.deal.entity.DealItem;
 import com.namatdang.namatdang.deal.repository.DealRepository;
-import com.namatdang.namatdang.media.TestImages;
 import com.namatdang.namatdang.security.JwtTokenProvider;
 import com.namatdang.namatdang.store.entity.Store;
 import com.namatdang.namatdang.store.repository.StoreRepository;
 import com.namatdang.namatdang.support.IntegrationTestSupport;
 import com.namatdang.namatdang.support.TestImageStorageConfiguration;
+import com.namatdang.namatdang.support.TestImages;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.entity.UserRole;
 import com.namatdang.namatdang.user.repository.UserRepository;

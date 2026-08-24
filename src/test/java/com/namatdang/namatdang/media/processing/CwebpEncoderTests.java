@@ -1,4 +1,4 @@
-package com.namatdang.namatdang.media;
+package com.namatdang.namatdang.media.processing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

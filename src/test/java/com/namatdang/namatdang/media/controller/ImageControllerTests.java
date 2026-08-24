@@ -1,4 +1,4 @@
-package com.namatdang.namatdang.media;
+package com.namatdang.namatdang.media.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -7,6 +7,10 @@ import static org.mockito.Mockito.when;
 
 import com.namatdang.namatdang.exception.BusinessLogicException;
 import com.namatdang.namatdang.exception.ExceptionCode;
+import com.namatdang.namatdang.media.ImageVariant;
+import com.namatdang.namatdang.media.service.ImageContent;
+import com.namatdang.namatdang.media.service.ImageQueryService;
+import com.namatdang.namatdang.support.TestImages;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;

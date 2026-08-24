@@ -1,9 +1,10 @@
-package com.namatdang.namatdang.media;
+package com.namatdang.namatdang.media.service;
 
 import com.namatdang.namatdang.deal.entity.Deal;
 import com.namatdang.namatdang.deal.repository.DealRepository;
 import com.namatdang.namatdang.exception.BusinessLogicException;
 import com.namatdang.namatdang.exception.ExceptionCode;
+import com.namatdang.namatdang.media.ImageVariant;
 import com.namatdang.namatdang.store.entity.Store;
 import com.namatdang.namatdang.store.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;

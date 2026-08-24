@@ -1,7 +1,16 @@
-package com.namatdang.namatdang.media;
+package com.namatdang.namatdang.media.service;
 
 import com.namatdang.namatdang.exception.BusinessLogicException;
 import com.namatdang.namatdang.exception.ExceptionCode;
+import com.namatdang.namatdang.media.ImageKind;
+import com.namatdang.namatdang.media.ImageUrls;
+import com.namatdang.namatdang.media.ImageVariant;
+import com.namatdang.namatdang.media.processing.ImageVariantProcessor;
+import com.namatdang.namatdang.media.processing.ImageVariantSet;
+import com.namatdang.namatdang.media.processing.ProcessedImage;
+import com.namatdang.namatdang.media.storage.ImageStorage;
+import com.namatdang.namatdang.media.storage.ImageStorageException;
+import com.namatdang.namatdang.media.storage.ImageVariantKeys;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -40,10 +49,6 @@ public class ImageMediaService {
         }
 
         return groupKey;
-    }
-
-    public ImageContent load(String key, String requestedVersion) {
-        return load(key, ImageVariant.DETAIL, requestedVersion);
     }
 
     public ImageContent load(String key, ImageVariant variant, String requestedVersion) {

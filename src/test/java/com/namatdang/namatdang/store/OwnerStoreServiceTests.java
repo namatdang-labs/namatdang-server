@@ -9,11 +9,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.namatdang.namatdang.media.ImageKind;
-import com.namatdang.namatdang.media.ImageMediaService;
-import com.namatdang.namatdang.media.TestImages;
+import com.namatdang.namatdang.media.service.ImageMediaService;
 import com.namatdang.namatdang.store.entity.Store;
 import com.namatdang.namatdang.store.repository.StoreRepository;
 import com.namatdang.namatdang.store.service.OwnerStoreService;
+import com.namatdang.namatdang.support.TestImages;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.entity.UserRole;
 import com.namatdang.namatdang.user.repository.UserRepository;

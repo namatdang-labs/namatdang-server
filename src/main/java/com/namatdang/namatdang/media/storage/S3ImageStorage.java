@@ -1,4 +1,4 @@
-package com.namatdang.namatdang.media;
+package com.namatdang.namatdang.media.storage;
 
 import jakarta.annotation.PreDestroy;
 import java.time.Duration;

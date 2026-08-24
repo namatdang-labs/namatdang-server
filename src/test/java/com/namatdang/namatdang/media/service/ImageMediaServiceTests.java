@@ -1,4 +1,4 @@
-package com.namatdang.namatdang.media;
+package com.namatdang.namatdang.media.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -8,6 +8,16 @@ import static org.mockito.Mockito.when;
 
 import com.namatdang.namatdang.exception.BusinessLogicException;
 import com.namatdang.namatdang.exception.ExceptionCode;
+import com.namatdang.namatdang.media.ImageKind;
+import com.namatdang.namatdang.media.ImageUrls;
+import com.namatdang.namatdang.media.ImageVariant;
+import com.namatdang.namatdang.media.processing.ImageVariantProcessor;
+import com.namatdang.namatdang.media.processing.ImageVariantSet;
+import com.namatdang.namatdang.media.processing.ProcessedImage;
+import com.namatdang.namatdang.media.storage.ImageStorage;
+import com.namatdang.namatdang.media.storage.ImageStorageException;
+import com.namatdang.namatdang.media.storage.ImageVariantKeys;
+import com.namatdang.namatdang.support.TestImages;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,7 +50,7 @@ class ImageMediaServiceTests {
         assertThat(card.bytes()).containsExactly(2);
         assertThat(card.contentType()).isEqualTo("image/webp");
         assertThat(storage.lastReadKey).isEqualTo(ImageVariantKeys.key(key, ImageVariant.CARD));
-        assertThatThrownBy(() -> service.load(key, "outdated"))
+        assertThatThrownBy(() -> service.load(key, ImageVariant.DETAIL, "outdated"))
                 .isInstanceOfSatisfying(BusinessLogicException.class, exception ->
                         assertThat(exception.getExceptionCode()).isEqualTo(ExceptionCode.IMAGE_NOT_FOUND));
         assertThat(storage.readCount).isEqualTo(1);
@@ -99,8 +109,7 @@ class ImageMediaServiceTests {
             TransactionSynchronizationManager.clearSynchronization();
         }
 
-        String oldGroup = ImageVariantKeys.groupKey(
-                ImageKind.STORE, 7L, java.util.UUID.fromString("00000000-0000-0000-0000-000000000007"));
+        String oldGroup = "images/stores/7/00000000-0000-0000-0000-000000000007";
         for (ImageVariant variant : ImageVariant.values()) {
             storage.write(ImageVariantKeys.key(oldGroup, variant), "image/webp", new byte[]{7});
         }
@@ -122,8 +131,7 @@ class ImageMediaServiceTests {
         ImageMediaService service = service(storage);
         String legacyObject = "images/deals/9/legacy.jpg";
         storage.write(legacyObject, "image/jpeg", TestImages.jpeg());
-        String oldGroup = ImageVariantKeys.groupKey(
-                ImageKind.DEAL, 9L, java.util.UUID.fromString("00000000-0000-0000-0000-000000000009"));
+        String oldGroup = "images/deals/9/00000000-0000-0000-0000-000000000009";
         for (ImageVariant variant : ImageVariant.values()) {
             storage.write(ImageVariantKeys.key(oldGroup, variant), "image/webp", new byte[]{9});
         }

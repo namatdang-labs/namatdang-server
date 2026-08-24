@@ -1,5 +1,6 @@
-package com.namatdang.namatdang.media;
+package com.namatdang.namatdang.media.processing;
 
+import com.namatdang.namatdang.media.ImageVariant;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;

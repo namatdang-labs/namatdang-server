@@ -1,5 +1,7 @@
-package com.namatdang.namatdang.media;
+package com.namatdang.namatdang.media.storage;
 
+import com.namatdang.namatdang.media.ImageKind;
+import com.namatdang.namatdang.media.ImageVariant;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;

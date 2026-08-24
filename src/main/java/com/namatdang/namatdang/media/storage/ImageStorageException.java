@@ -1,4 +1,4 @@
-package com.namatdang.namatdang.media;
+package com.namatdang.namatdang.media.storage;
 
 public class ImageStorageException extends RuntimeException {
 

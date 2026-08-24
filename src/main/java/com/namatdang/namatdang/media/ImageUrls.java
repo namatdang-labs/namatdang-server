@@ -13,10 +13,6 @@ public final class ImageUrls {
     private ImageUrls() {
     }
 
-    public static String forStore(Store store) {
-        return forStore(store, ImageVariant.DETAIL);
-    }
-
     public static String forStore(Store store, ImageVariant variant) {
         if (store.getImageKey() == null) {
             return null;
@@ -24,10 +20,6 @@ public final class ImageUrls {
 
         return "/api/v1/stores/%d/image?variant=%s&v=%s".formatted(
                 store.getId(), requestValue(variant), versionOf(store.getImageKey()));
-    }
-
-    public static String forDeal(Deal deal) {
-        return forDeal(deal, ImageVariant.DETAIL);
     }
 
     public static String forDeal(Deal deal, ImageVariant variant) {
@@ -39,7 +31,7 @@ public final class ImageUrls {
                 deal.getId(), requestValue(variant), versionOf(deal.getImageKey()));
     }
 
-    static String versionOf(String key) {
+    public static String versionOf(String key) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")
                     .digest(key.getBytes(StandardCharsets.UTF_8));

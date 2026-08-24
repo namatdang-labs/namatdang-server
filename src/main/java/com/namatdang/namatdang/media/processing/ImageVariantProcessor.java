@@ -1,11 +1,12 @@
-package com.namatdang.namatdang.media;
+package com.namatdang.namatdang.media.processing;
 
 import com.drew.imaging.ImageMetadataReader;
 import com.drew.metadata.Metadata;
 import com.drew.metadata.exif.ExifIFD0Directory;
 import com.namatdang.namatdang.exception.BusinessLogicException;
 import com.namatdang.namatdang.exception.ExceptionCode;
-import com.namatdang.namatdang.media.ImageValidator.ValidatedImage;
+import com.namatdang.namatdang.media.ImageVariant;
+import com.namatdang.namatdang.media.processing.ImageValidator.ValidatedImage;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;

@@ -1,4 +1,4 @@
-package com.namatdang.namatdang.media;
+package com.namatdang.namatdang.support;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;

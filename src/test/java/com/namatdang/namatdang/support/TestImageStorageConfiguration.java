@@ -4,12 +4,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.namatdang.namatdang.media.ImageStorage;
 import com.namatdang.namatdang.media.ImageVariant;
-import com.namatdang.namatdang.media.ImageVariantProcessor;
-import com.namatdang.namatdang.media.ImageVariantSet;
-import com.namatdang.namatdang.media.ProcessedImage;
-import com.namatdang.namatdang.media.TestImages;
+import com.namatdang.namatdang.media.processing.ImageValidator;
+import com.namatdang.namatdang.media.processing.ImageVariantProcessor;
+import com.namatdang.namatdang.media.processing.ImageVariantSet;
+import com.namatdang.namatdang.media.processing.ProcessedImage;
+import com.namatdang.namatdang.media.storage.ImageStorage;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
@@ -37,7 +37,7 @@ public class TestImageStorageConfiguration {
             variants.put(variant, new ProcessedImage(TestImages.webp(), "image/webp", 1, 1));
         }
         when(processor.process(any())).thenAnswer(invocation -> {
-            new com.namatdang.namatdang.media.ImageValidator().validate(invocation.getArgument(0));
+            new ImageValidator().validate(invocation.getArgument(0));
             return new ImageVariantSet(variants);
         });
         return processor;

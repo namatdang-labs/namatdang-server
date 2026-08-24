@@ -1,4 +1,4 @@
-package com.namatdang.namatdang.media;
+package com.namatdang.namatdang.media.processing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -10,7 +10,8 @@ import static org.mockito.Mockito.when;
 
 import com.namatdang.namatdang.exception.BusinessLogicException;
 import com.namatdang.namatdang.exception.ExceptionCode;
-import com.namatdang.namatdang.media.ImageValidator.ValidatedImage;
+import com.namatdang.namatdang.media.ImageVariant;
+import com.namatdang.namatdang.media.processing.ImageValidator.ValidatedImage;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
