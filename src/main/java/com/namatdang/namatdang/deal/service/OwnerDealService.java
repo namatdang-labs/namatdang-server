@@ -9,6 +9,8 @@ import com.namatdang.namatdang.deal.entity.DealStatus;
 import com.namatdang.namatdang.deal.repository.DealRepository;
 import com.namatdang.namatdang.exception.BusinessLogicException;
 import com.namatdang.namatdang.exception.ExceptionCode;
+import com.namatdang.namatdang.media.ImageKind;
+import com.namatdang.namatdang.media.ImageMediaService;
 import com.namatdang.namatdang.notification.event.NotificationEventRecorder;
 import com.namatdang.namatdang.store.entity.Store;
 import com.namatdang.namatdang.store.repository.StoreRepository;
@@ -17,6 +19,8 @@ import com.namatdang.namatdang.user.entity.UserRole;
 import com.namatdang.namatdang.user.repository.UserRepository;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Objects;
+import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +28,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionOperations;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -37,9 +43,34 @@ public class OwnerDealService {
     private final StoreRepository storeRepository;
     private final UserRepository userRepository;
     private final NotificationEventRecorder notificationEventRecorder;
+    private final ImageMediaService imageMediaService;
+    private final TransactionOperations transactions;
 
-    @Transactional
-    public DealDetailResponseDto createDeal(Long userId, Long storeId, DealCreateRequestDto requestDto) {
+    public DealDetailResponseDto createDeal(Long userId, Long storeId, DealCreateRequestDto requestDto,
+                                            MultipartFile image) {
+        if (image == null) {
+            return inTransaction(() -> createDealInTransaction(userId, storeId, requestDto, null));
+        }
+
+        inTransaction(() -> {
+            User owner = findOwnerById(userId);
+            findStoreByIdAndOwnerId(storeId, owner.getId());
+            validateSalesEndsAt(requestDto.getSalesEndsAt());
+            return Boolean.TRUE;
+        });
+
+        String newImageKey = imageMediaService.store(ImageKind.DEAL, image);
+        try {
+            return inTransaction(() -> createDealInTransaction(userId, storeId, requestDto, newImageKey));
+        } catch (RuntimeException exception) {
+            imageMediaService.deleteImmediately(newImageKey);
+            throw exception;
+        }
+    }
+
+    private DealDetailResponseDto createDealInTransaction(Long userId, Long storeId,
+                                                          DealCreateRequestDto requestDto,
+                                                          String imageKey) {
         User owner = findOwnerById(userId);
         Store store = findStoreByIdAndOwnerId(storeId, owner.getId());
 
@@ -50,7 +81,8 @@ public class OwnerDealService {
             deal.addItem(itemRequestDto.toEntity());
         }
 
-        Deal savedDeal = dealRepository.save(deal);
+        deal.updateImageKey(imageKey);
+        Deal savedDeal = dealRepository.saveAndFlush(deal);
         notificationEventRecorder.recordDealCreated(
                 savedDeal.getId(),
                 store.getId(),
@@ -84,6 +116,32 @@ public class OwnerDealService {
         return DealDetailResponseDto.from(deal);
     }
 
+    public DealDetailResponseDto updateImage(Long userId, Long dealId, MultipartFile image) {
+        inTransaction(() -> {
+            User owner = findOwnerById(userId);
+            Deal deal = findDealByIdForUpdate(dealId);
+            validateOwnership(owner.getId(), deal);
+            return Boolean.TRUE;
+        });
+
+        String newImageKey = imageMediaService.store(ImageKind.DEAL, image);
+        try {
+            return inTransaction(() -> {
+                User owner = findOwnerById(userId);
+                Deal deal = findDealByIdForUpdate(dealId);
+                validateOwnership(owner.getId(), deal);
+
+                String previousKey = deal.getImageKey();
+                deal.updateImageKey(newImageKey);
+                imageMediaService.deleteAfterCommit(previousKey);
+                return DealDetailResponseDto.from(deal);
+            });
+        } catch (RuntimeException exception) {
+            imageMediaService.deleteImmediately(newImageKey);
+            throw exception;
+        }
+    }
+
     private Pageable createPageable(int page, int size) {
         return PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
     }
@@ -109,6 +167,11 @@ public class OwnerDealService {
                 .orElseThrow(() -> new BusinessLogicException(ExceptionCode.DEAL_NOT_FOUND));
     }
 
+    private Deal findDealByIdForUpdate(Long dealId) {
+        return dealRepository.findByIdForUpdate(dealId)
+                .orElseThrow(() -> new BusinessLogicException(ExceptionCode.DEAL_NOT_FOUND));
+    }
+
     private void validateOwnership(Long ownerId, Deal deal) {
         if (!deal.getStore().getOwner().getId().equals(ownerId)) {
             throw new BusinessLogicException(ExceptionCode.FORBIDDEN);
@@ -131,5 +194,9 @@ public class OwnerDealService {
         if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
             throw new BusinessLogicException(ExceptionCode.INVALID_INPUT_VALUE);
         }
+    }
+
+    private <T> T inTransaction(Supplier<T> action) {
+        return Objects.requireNonNull(transactions.execute(status -> action.get()));
     }
 }

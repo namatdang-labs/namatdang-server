@@ -3,6 +3,8 @@ package com.namatdang.namatdang.deal.dto;
 import com.namatdang.namatdang.deal.entity.Deal;
 import com.namatdang.namatdang.deal.entity.DealItem;
 import com.namatdang.namatdang.deal.entity.DealStatus;
+import com.namatdang.namatdang.media.ImageUrls;
+import com.namatdang.namatdang.media.ImageVariant;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -18,6 +20,7 @@ public class DealResponseDto {
     private LocalDateTime salesEndsAt;
     private DealStatus status;
     private String description;
+    private String imageUrl;
     private int itemCount;
     private int lowestSalePrice;
     private Long distanceMeters;
@@ -54,6 +57,7 @@ public class DealResponseDto {
                                    deal.getSalesEndsAt(),
                                    deal.displayStatus(LocalDateTime.now()),
                                    deal.getDescription(),
+                                   ImageUrls.forDeal(deal, ImageVariant.CARD),
                                    summaryItems.size(),
                                    summaryItems.stream()
                                            .mapToInt(DealItem::getSalePrice)

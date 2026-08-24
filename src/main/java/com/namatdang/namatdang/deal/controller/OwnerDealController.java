@@ -11,16 +11,19 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
@@ -35,7 +38,7 @@ public class OwnerDealController {
 
     private final OwnerDealService ownerDealService;
 
-    @PostMapping("/stores/{storeId}/deals")
+    @PostMapping(value = "/stores/{storeId}/deals", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "딜 등록")
     public ResponseEntity<DealDetailResponseDto> createDeal(
             @AuthenticationPrincipal AuthUser authUser,
@@ -43,9 +46,11 @@ public class OwnerDealController {
             // TODO: #28 - 헤더를 받기만 하고 쓰지 않아, 같은 X-Request-Id로 재시도하면
             //  딜이 중복 생성된다. 멱등키 저장소를 도입할 때 이 파라미터를 서비스로 넘긴다.
             @RequestHeader(value = "X-Request-Id", required = false) String requestId,
-            @Valid @RequestBody DealCreateRequestDto requestDto
+            @Valid @RequestPart("request") DealCreateRequestDto requestDto,
+            @RequestPart(value = "image", required = false) MultipartFile image
     ) {
-        DealDetailResponseDto responseDto = ownerDealService.createDeal(authUser.getUserId(), storeId, requestDto);
+        DealDetailResponseDto responseDto = ownerDealService.createDeal(authUser.getUserId(), storeId,
+                                                                         requestDto, image);
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
     }
 
@@ -69,5 +74,14 @@ public class OwnerDealController {
                                                            @PathVariable Long dealId) {
         DealDetailResponseDto responseDto = ownerDealService.getMyDeal(authUser.getUserId(), dealId);
         return ResponseEntity.ok(responseDto);
+    }
+
+    @PutMapping(value = "/deals/{dealId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "내 딜 대표 이미지 등록·교체")
+    public ResponseEntity<DealDetailResponseDto> updateDealImage(
+            @AuthenticationPrincipal AuthUser authUser,
+            @PathVariable Long dealId,
+            @RequestPart("image") MultipartFile image) {
+        return ResponseEntity.ok(ownerDealService.updateImage(authUser.getUserId(), dealId, image));
     }
 }

@@ -1,21 +1,28 @@
 package com.namatdang.namatdang.deal;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.namatdang.namatdang.deal.entity.Deal;
 import com.namatdang.namatdang.deal.entity.DealItem;
 import com.namatdang.namatdang.deal.repository.DealRepository;
+import com.namatdang.namatdang.media.TestImages;
 import com.namatdang.namatdang.security.JwtTokenProvider;
 import com.namatdang.namatdang.store.entity.Store;
 import com.namatdang.namatdang.store.repository.StoreRepository;
 import com.namatdang.namatdang.support.IntegrationTestSupport;
+import com.namatdang.namatdang.support.TestImageStorageConfiguration;
 import com.namatdang.namatdang.user.entity.User;
 import com.namatdang.namatdang.user.entity.UserRole;
 import com.namatdang.namatdang.user.repository.UserRepository;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -24,13 +31,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
+@Import(TestImageStorageConfiguration.class)
 class OwnerDealApiTests extends IntegrationTestSupport {
 
     @Autowired
@@ -54,11 +66,8 @@ class OwnerDealApiTests extends IntegrationTestSupport {
         Store store = saveStore(owner);
         LocalDateTime salesEndsAt = hoursLater(3);
 
-        mockMvc.perform(post("/api/v1/owner/stores/{storeId}/deals", store.getId())
-                        .header("Authorization", bearerToken(owner))
-                        .header("X-Request-Id", UUID.randomUUID().toString())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(dealRequestBody(salesEndsAt, 5, 3)))
+        mockMvc.perform(createDealRequest(store, owner, dealRequestBody(salesEndsAt, 5, 3))
+                        .header("X-Request-Id", UUID.randomUUID().toString()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.dealId").isNumber())
                 .andExpect(jsonPath("$.storeId").value(store.getId()))
@@ -73,15 +82,139 @@ class OwnerDealApiTests extends IntegrationTestSupport {
     }
 
     @Test
+    void ownerCreatesDealWithRepresentativeImageAndCustomersCanReadIt() throws Exception {
+        User owner = saveUser(UserRole.OWNER);
+        Store store = saveStore(owner);
+        byte[] requestBytes = dealRequestBody(hoursLater(3), 5, 3)
+                .getBytes(StandardCharsets.UTF_8);
+        MockMultipartFile request = new MockMultipartFile(
+                "request", "", MediaType.APPLICATION_JSON_VALUE, requestBytes);
+        byte[] imageBytes = jpegBytes();
+        MockMultipartFile image = new MockMultipartFile(
+                "image", "deal.jpg", MediaType.IMAGE_JPEG_VALUE, imageBytes);
+
+        mockMvc.perform(multipart("/api/v1/owner/stores/{storeId}/deals", store.getId())
+                        .file(request)
+                        .file(image)
+                        .header("Authorization", bearerToken(owner)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.imageUrl").isNotEmpty());
+
+        Deal savedDeal = dealRepository.findAll().stream()
+                .filter(deal -> deal.getStore().getId().equals(store.getId()))
+                .findFirst()
+                .orElseThrow();
+        mockMvc.perform(get("/api/v1/deals/{dealId}/image", savedDeal.getId()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.valueOf("image/webp")))
+                .andExpect(result -> org.assertj.core.api.Assertions.assertThat(
+                                result.getResponse().getContentAsByteArray())
+                        .containsExactly(TestImages.webp()));
+    }
+
+    @Test
+    void ownerCreatesDealWithoutImage() throws Exception {
+        User owner = saveUser(UserRole.OWNER);
+        Store store = saveStore(owner);
+
+        mockMvc.perform(multipart("/api/v1/owner/stores/{storeId}/deals", store.getId())
+                        .file(requestPart(dealRequestBody(hoursLater(3), 5, 3)))
+                        .header("Authorization", bearerToken(owner)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.dealId").isNumber())
+                .andExpect(jsonPath("$.imageUrl").doesNotExist());
+
+        Deal savedDeal = dealRepository.findAll().stream()
+                .filter(deal -> deal.getStore().getId().equals(store.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(savedDeal.getImageKey()).isNull();
+    }
+
+    @Test
+    void creatingDealWithEmptyImageReturnsInvalidImage() throws Exception {
+        User owner = saveUser(UserRole.OWNER);
+        Store store = saveStore(owner);
+        MockMultipartFile emptyImage = new MockMultipartFile(
+                "image", "empty.jpg", MediaType.IMAGE_JPEG_VALUE, new byte[0]);
+
+        mockMvc.perform(multipart("/api/v1/owner/stores/{storeId}/deals", store.getId())
+                        .file(requestPart(dealRequestBody(hoursLater(3), 5, 3)))
+                        .file(emptyImage)
+                        .header("Authorization", bearerToken(owner)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_IMAGE"));
+    }
+
+    @Test
+    void jsonDealCreationIsNotSupported() throws Exception {
+        User owner = saveUser(UserRole.OWNER);
+        Store store = saveStore(owner);
+
+        mockMvc.perform(post("/api/v1/owner/stores/{storeId}/deals", store.getId())
+                        .header("Authorization", bearerToken(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(dealRequestBody(hoursLater(3), 5, 3)))
+                .andExpect(status().isUnsupportedMediaType());
+    }
+
+    @Test
+    void ownerReplacesDealImage() throws Exception {
+        User owner = saveUser(UserRole.OWNER);
+        Store store = saveStore(owner);
+        Deal deal = saveDeal(store, hoursLater(3), 5);
+        deal.updateImageKey("images/deals/%d/old.jpg".formatted(deal.getId()));
+        dealRepository.flush();
+        byte[] replacementBytes = TestImages.png();
+        MockMultipartFile replacement = new MockMultipartFile(
+                "image", "replacement.png", MediaType.IMAGE_PNG_VALUE, replacementBytes);
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/api/v1/owner/deals/{dealId}/image", deal.getId())
+                        .file(replacement)
+                        .header("Authorization", bearerToken(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dealId").value(deal.getId()))
+                .andExpect(jsonPath("$.imageUrl").isNotEmpty());
+
+        mockMvc.perform(get("/api/v1/deals/{dealId}/image", deal.getId()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.valueOf("image/webp")))
+                .andExpect(result -> assertThat(result.getResponse().getContentAsByteArray())
+                        .containsExactly(TestImages.webp()));
+    }
+
+    @Test
+    void ownerCannotReplaceOtherOwnersDealImage() throws Exception {
+        User owner = saveUser(UserRole.OWNER);
+        User otherOwner = saveUser(UserRole.OWNER);
+        Store store = saveStore(owner);
+        Deal deal = saveDeal(store, hoursLater(3), 5);
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/api/v1/owner/deals/{dealId}/image", deal.getId())
+                        .file(imagePart())
+                        .header("Authorization", bearerToken(otherOwner)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    void deletingDealImageIsNotSupported() throws Exception {
+        User owner = saveUser(UserRole.OWNER);
+        Store store = saveStore(owner);
+        Deal deal = saveDeal(store, hoursLater(3), 5);
+
+        mockMvc.perform(delete("/api/v1/owner/deals/{dealId}/image", deal.getId())
+                        .header("Authorization", bearerToken(owner)))
+                .andExpect(status().isMethodNotAllowed());
+    }
+
+    @Test
     void creatingDealOnOtherOwnersStoreReturnsNotFound() throws Exception {
         User owner = saveUser(UserRole.OWNER);
         User otherOwner = saveUser(UserRole.OWNER);
         Store store = saveStore(owner);
 
-        mockMvc.perform(post("/api/v1/owner/stores/{storeId}/deals", store.getId())
-                        .header("Authorization", bearerToken(otherOwner))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(dealRequestBody(hoursLater(3), 5, 3)))
+        mockMvc.perform(createDealRequest(store, otherOwner, dealRequestBody(hoursLater(3), 5, 3)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("STORE_NOT_FOUND"));
     }
@@ -92,10 +225,7 @@ class OwnerDealApiTests extends IntegrationTestSupport {
         User consumer = saveUser(UserRole.CONSUMER);
         Store store = saveStore(owner);
 
-        mockMvc.perform(post("/api/v1/owner/stores/{storeId}/deals", store.getId())
-                        .header("Authorization", bearerToken(consumer))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(dealRequestBody(hoursLater(3), 5, 3)))
+        mockMvc.perform(createDealRequest(store, consumer, dealRequestBody(hoursLater(3), 5, 3)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
@@ -118,10 +248,7 @@ class OwnerDealApiTests extends IntegrationTestSupport {
                 {"salesEndsAt":"%s","description":"안내","items":[%s]}"""
                 .formatted(format(hoursLater(3)), items);
 
-        mockMvc.perform(post("/api/v1/owner/stores/{storeId}/deals", store.getId())
-                        .header("Authorization", bearerToken(owner))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
+        mockMvc.perform(createDealRequest(store, owner, body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
     }
@@ -131,10 +258,8 @@ class OwnerDealApiTests extends IntegrationTestSupport {
         User owner = saveUser(UserRole.OWNER);
         Store store = saveStore(owner);
 
-        mockMvc.perform(post("/api/v1/owner/stores/{storeId}/deals", store.getId())
-                        .header("Authorization", bearerToken(owner))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(dealRequestBody(LocalDateTime.now().plusMinutes(5), 5, 3)))
+        mockMvc.perform(createDealRequest(
+                        store, owner, dealRequestBody(LocalDateTime.now().plusMinutes(5), 5, 3)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
     }
@@ -144,10 +269,8 @@ class OwnerDealApiTests extends IntegrationTestSupport {
         User owner = saveUser(UserRole.OWNER);
         Store store = saveStore(owner);
 
-        mockMvc.perform(post("/api/v1/owner/stores/{storeId}/deals", store.getId())
-                        .header("Authorization", bearerToken(owner))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(dealRequestBody(LocalDateTime.now().plusHours(25), 5, 3)))
+        mockMvc.perform(createDealRequest(
+                        store, owner, dealRequestBody(LocalDateTime.now().plusHours(25), 5, 3)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
     }
@@ -162,10 +285,7 @@ class OwnerDealApiTests extends IntegrationTestSupport {
                  "items":[{"name":"소금빵","totalQuantity":100,"originalPrice":4000,"salePrice":2000}]}"""
                 .formatted(format(hoursLater(3)));
 
-        mockMvc.perform(post("/api/v1/owner/stores/{storeId}/deals", store.getId())
-                        .header("Authorization", bearerToken(owner))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
+        mockMvc.perform(createDealRequest(store, owner, body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
     }
@@ -236,6 +356,23 @@ class OwnerDealApiTests extends IntegrationTestSupport {
                 .formatted(format(salesEndsAt), firstQuantity, secondQuantity);
     }
 
+    private MockMultipartHttpServletRequestBuilder createDealRequest(Store store, User user, String body) {
+        return multipart("/api/v1/owner/stores/{storeId}/deals", store.getId())
+                .file(requestPart(body))
+                .file(imagePart())
+                .header("Authorization", bearerToken(user));
+    }
+
+    private MockMultipartFile requestPart(String body) {
+        return new MockMultipartFile(
+                "request", "", MediaType.APPLICATION_JSON_VALUE, body.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private MockMultipartFile imagePart() {
+        return new MockMultipartFile(
+                "image", "deal.jpg", MediaType.IMAGE_JPEG_VALUE, jpegBytes());
+    }
+
     private String format(LocalDateTime dateTime) {
         return dateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     }
@@ -278,5 +415,9 @@ class OwnerDealApiTests extends IntegrationTestSupport {
 
     private String uniqueValue() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private byte[] jpegBytes() {
+        return TestImages.jpeg();
     }
 }
